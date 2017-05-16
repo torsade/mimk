@@ -13,14 +13,14 @@ Mimk (short for minimal make) is a small build automation system written in Pyth
 
 # Usage
 Usage:
-'''
+```
     python mimk.py [-h] [-c CONFIG] [-r] [-v] target
     target                      Target configuration file
     -h, --help                  Show help message and exit
     -c CONFIG, --config CONFIG  Compiler configration file
     -r, --remove                Remove all dependency, object and executable files
     -v, --verbose               Verbose output
-'''
+```
 
 # Configuration
 Mimk requires one (mandatory) target configuration file and one (optional) compiler configuration file.
@@ -38,9 +38,10 @@ Each target is defined by a dictionary with the following keys:
 
 ## Compiler configuration
 The compiler configuration file contains information about compilers, linkers and flags.
+If no compiler configuration file is given, the default file 'gcc_release.py' is used.
 The entry point if the dictionary variable 'config', which contains 
 The following keys are supported:
-* 'BUILD':   Name of the compiler configuration, e.g. "gcc_release"
+* 'BUILD':   Name of the compiler configuration, (default: 'gcc_release')
 * 'DEPPATH': Name of subfolder for dependency files
 * 'OBJPATH': Name of subfolder for object files
 * 'SRCEXT':  Extension of source files (e.g. 'c')
