@@ -7,8 +7,10 @@ import os
 
 
 # Get SHA-256 hash of file
-def sha256file(filename):
+def sha256file(filename, ext=''):
     hash_sha256 = hashlib.sha256()
+    if not os.path.isfile(filename):
+        filename = filename + ext
     with open(filename, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b''):
             hash_sha256.update(chunk)
@@ -29,10 +31,30 @@ def eval_rule(rule):
                 rule_list[index] = rule_list[index].replace(r[0:pos], config[r[1:pos]])
     return ' '.join(rule_list)
 
+
+# Issue command
+def command(cmd):
+    if args.verbose:
+        print(cmd)
+    os.system(cmd)
+
+
+# Remove file
+def remove(filename, ext=''):
+    if args.verbose:
+        print('Remove ' + filename)
+    if not os.path.isfile(filename):
+        filename = filename + ext
+    if os.path.isfile(filename):
+        os.remove(filename)
+
+
 # Main program
+global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
-parser.add_argument('target', help='')
+parser.add_argument('target', help='Target configuration file')
 parser.add_argument('-c', '--config', default='gcc_release', help='Compiler configuration file')
+parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
 args = parser.parse_args()
 
@@ -42,7 +64,6 @@ print('mimk - Minimal make')
 # Import target and config
 try:
     target_module = importlib.import_module(args.target, package=None)
-    target_name = target_module.target_name
     targets = target_module.targets
 except Exception:
     print('Could not find target file ' + args.target + '.py')
@@ -120,6 +141,14 @@ for index, target in enumerate(targets):
         dep_path = dep_dir + '/' + dep
         obj_path = obj_dir + '/' + obj
 
+        # Remove dependency and object files
+        if args.remove:
+            hash_dict.pop(dep_path, None)
+            hash_dict.pop(obj_path, None)
+            remove(dep_path)
+            remove(obj_path)
+            continue
+
         # Add paths to config
         config['SRC_PATH'] = src_path
         config['DEP_PATH'] = dep_path
@@ -145,9 +174,14 @@ for index, target in enumerate(targets):
 
             # Get dependencies
             dep_cmd = eval_rule(target['DEPRULE'])
-            if args.verbose:
-                print(dep_cmd)
-            os.system(dep_cmd) 
+            command(dep_cmd)
+
+            # Append hash of newly generated file to list
+            try:
+                hash = sha256file(dep_path)
+                hash_dict[dep_path] = hash
+            except Exception:
+                pass
 
         # Get list of dependencies
         dependencies = filter(None, open(dep_path, 'r').read().translate(None, ':\\\n\r').split(' '))
@@ -186,9 +220,7 @@ for index, target in enumerate(targets):
 
             # Compile source file
             src_cmd = eval_rule(target['SRCRULE'])
-            if args.verbose:
-                print(src_cmd)
-            os.system(src_cmd)
+            command(src_cmd)
 
         # After object file has been compiled, append it to list
         obj_list.append(obj_path)
@@ -201,7 +233,7 @@ for index, target in enumerate(targets):
     if target_path in hash_dict.keys():
         # Check if target file has been modified by checking its SHA-256 hash against a list of known hashes
         try:
-            hash = sha256file(target_path)
+            hash = sha256file(target_path, '.exe')
             if hash_dict[target_path] == hash:
                 modified = False
         except Exception:
@@ -211,33 +243,39 @@ for index, target in enumerate(targets):
     config['TARGET'] = target_path
     config['OBJ_LIST'] = ' '.join(obj_list)
 
-    # Create target file
-    if modified or modified_any:
-        obj_cmd = eval_rule(target['OBJRULE'])
-        if args.verbose:
-            print(obj_cmd)
-        os.system(obj_cmd)
+    # Remove target files
+    if args.remove:
+        hash_dict.pop(target_path, None)
+        remove(target_path, '.exe')
+    else:
+        # Create target file
+        if modified or modified_any:
+            obj_cmd = eval_rule(target['OBJRULE'])
+            command(obj_cmd)
 
-        # Append hash of newly generated file to list
-        try:
-            hash = sha256file(target_path)
-            hash_dict[target_path] = hash
-        except Exception:
-            pass
+            # Append hash of newly generated file to list
+            try:
+                hash = sha256file(target_path, '.exe')
+                hash_dict[target_path] = hash
+            except Exception:
+                pass
 
     # Update hash dictionary with new hashes
     hash_dict.update(new_hash_dict);
+
+    # Remove hash dictionary
+    if args.remove:
+        hash_dict = {}
 
     # Write hash file
     json.dump(hash_dict, open(build_dir + '/.hashes.json', 'w'), indent=1, sort_keys=True)
 
     # Run executable
-    if 'EXERULE' in target.keys():
-        exe_cmd = os.path.join(*eval_rule(target['EXERULE']).split('/'))
-        if os.path.isfile:
-            if args.verbose:
-                print(exe_cmd)
-            os.system(exe_cmd)
+    if not args.remove:
+        if 'EXERULE' in target.keys():
+            exe_cmd = os.path.join(*eval_rule(target['EXERULE']).split('/'))
+            if os.path.isfile:
+                command(exe_cmd)
 
 # End message
 print('Done.')
