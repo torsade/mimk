@@ -13,12 +13,14 @@ Mimk (short for minimal make) is a small build automation system written in Pyth
 
 # Usage
 Usage:
+'''
     python mimk.py [-h] [-c CONFIG] [-r] [-v] target
     target                      Target configuration file
     -h, --help                  Show help message and exit
     -c CONFIG, --config CONFIG  Compiler configration file
     -r, --remove                Remove all dependency, object and executable files
     -v, --verbose               Verbose output
+'''
 
 # Configuration
 Mimk requires one (mandatory) target configuration file and one (optional) compiler configuration file.
