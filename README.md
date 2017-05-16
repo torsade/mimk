@@ -12,6 +12,7 @@ Mimk (short for minimal make) is a small build automation system written in Pyth
 * Supports cross-compilation
 
 # Usage
+Mimk consists of just one Python script file 'mimk.py'.
 Usage:
 ```
     python mimk.py [-h] [-c CONFIG] [-r] [-v] target
@@ -22,8 +23,28 @@ Usage:
     -v, --verbose               Verbose output
 ```
 
+## Examples
+Make target 'all' with GCC compiler and release options: ```
+    python mimk.py all
+```
+Make target 'all' with GCC compiler and debug options: ```
+    python mimk.py -c gcc_debug.py all
+```
+Remove intermediate files: ```
+    python mimk.py -r all
+```
+Be verbose: ```
+    python mimk.py -v all
+```
+
 # Configuration
 Mimk requires one (mandatory) target configuration file and one (optional) compiler configuration file.
+The configuration files are python programs that are imported by mimk.py.
+This allows several shortcuts:
+* defining an 'include' variable which s then used for compiler and linker flags
+* importing multiple targets into the 'all' target
+* defining compiler-dependant options using 'if...else' conditions
+However, mimk does not execute any functions within these configuration files, but rather uses variables defined in them.
 
 ## Target Configuration
 The target configuration file contains information about how to build the target(s).
@@ -39,11 +60,11 @@ Each target is defined by a dictionary with the following keys:
 ## Compiler configuration
 The compiler configuration file contains information about compilers, linkers and flags.
 If no compiler configuration file is given, the default file 'gcc_release.py' is used.
-The entry point if the dictionary variable 'config', which contains 
+The entry point if the dictionary variable 'config'.
 The following keys are supported:
 * 'BUILD':   Name of the compiler configuration, (default: 'gcc_release')
-* 'DEPPATH': Name of subfolder for dependency files
-* 'OBJPATH': Name of subfolder for object files
+* 'DEPPATH': Name of subfolder for dependency files (default: 'dep')
+* 'OBJPATH': Name of subfolder for object files (default: 'obj')
 * 'SRCEXT':  Extension of source files (e.g. 'c')
 * 'INCEXT':  Extension of include files (e.g. 'h')
 * 'DEPEXT':  Extension of dependency files (e.g. 'd')
