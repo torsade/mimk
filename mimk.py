@@ -39,6 +39,11 @@ def command(cmd):
     os.system(cmd)
 
 
+# Make directory
+def makedir(pathname):
+    if not os.path.exists(pathname):
+        os.makedirs(pathname)
+
 # Remove file
 def remove(filename, ext=''):
     if args.verbose:
@@ -81,14 +86,11 @@ if args.verbose:
 # Create build directory and sub-folders
 build_dir = 'build_' + config['BUILD']
 config['BUILD_DIR'] = build_dir
-if not os.path.exists(build_dir):
-    os.makedirs(build_dir)
+makedir(build_dir)
 dep_dir = build_dir + '/' + config['DEPPATH']
-if not os.path.exists(dep_dir):
-    os.makedirs(dep_dir)
+makedir(dep_dir)
 obj_dir = build_dir + '/' + config['OBJPATH']
-if not os.path.exists(obj_dir):
-    os.makedirs(obj_dir)
+makedir(obj_dir)
 
 # Read hashes from file
 try:
@@ -118,6 +120,7 @@ for index, target in enumerate(targets):
         print('No target defined in section #' + str(index) + ' of file ' + args.target + '.py')
         continue
     print('Target: ' + target['TARGET'])
+
     # Get list of all SRCEXT files from SRCPATH
     try:
         src_files = [fn for fn in os.listdir(target['SRCPATH']) if fn.endswith(config['SRCEXT'])]
@@ -243,8 +246,9 @@ for index, target in enumerate(targets):
     config['TARGET'] = target_path
     config['OBJ_LIST'] = ' '.join(obj_list)
 
-    # Remove target files
+    # Handle target file
     if args.remove:
+        # Remove target file
         hash_dict.pop(target_path, None)
         remove(target_path, '.exe')
     else:
@@ -274,8 +278,7 @@ for index, target in enumerate(targets):
     if not args.remove:
         if 'EXERULE' in target.keys():
             exe_cmd = os.path.join(*eval_rule(target['EXERULE']).split('/'))
-            if os.path.isfile:
-                command(exe_cmd)
+            command(exe_cmd)
 
 # End message
 print('Done.')

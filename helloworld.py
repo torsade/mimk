@@ -11,3 +11,5 @@ helloworld = {
     'OBJRULE':  '$CC $CFLAGS $OBJ_LIST -o $TARGET',
     'EXERULE':  '$TARGET'
 }
+
+targets = [helloworld]
