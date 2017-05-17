@@ -2,6 +2,10 @@
 #
 # Target:   helloworld
 
+src_files = [
+    'examples/helloworld/helloworld.c'
+]
+
 helloworld = {
     'TARGET':   'helloworld',
     'SRCPATH':  'examples/helloworld',

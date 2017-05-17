@@ -54,6 +54,14 @@ def remove(filename, ext=''):
         os.remove(filename)
 
 
+# Check if list of files exists
+def files_exist(file_list):
+    exist_list = []
+    for file in file_list:
+        exist_list.append(os.path.isfile(file))
+    return all(exist_list)
+
+
 # Main program
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
@@ -87,14 +95,15 @@ if args.verbose:
 build_dir = 'build_' + config['BUILD']
 config['BUILD_DIR'] = build_dir
 makedir(build_dir)
-dep_dir = build_dir + '/' + config['DEPPATH']
+dep_dir = os.path.join(build_dir, config['DEPPATH'])
 makedir(dep_dir)
-obj_dir = build_dir + '/' + config['OBJPATH']
+obj_dir = os.path.join(build_dir, config['OBJPATH'])
 makedir(obj_dir)
 
 # Read hashes from file
+hashes_file = '.hashes.json'
 try:
-    hash_dict = json.load(open(build_dir + '/.hashes.json', 'r'))
+    hash_dict = json.load(open(os.path.join(build_dir, hashes_file), 'r'))
 except Exception:
     hash_dict = {}
 hash_src = 0
@@ -121,14 +130,23 @@ for index, target in enumerate(targets):
         continue
     print('Target: ' + target['TARGET'])
 
-    # Get list of all SRCEXT files from SRCPATH
-    try:
-        src_files = [fn for fn in os.listdir(target['SRCPATH']) if fn.endswith(config['SRCEXT'])]
-    except Exception:
-        src_files = []
-    if not src_files:
-        print('No source files found matching pattern ' + target['SRCPATH'] + '/*.' + config['SRCEXT'])
-        continue
+    # Get source files list
+    src_files = []
+    if target_module.src_files:
+        # Get list of source files from target configuration
+        src_files = target_module.src_files
+        if not files_exist(src_files):
+            print('At least one source file could not be found: ' + src_files)
+            continue
+    else:
+        # Get list of all SRCEXT files from SRCPATH
+        try:
+            src_files = [os.path.join(target['SRCPATH'], fn) for fn in os.listdir(target['SRCPATH']) if fn.endswith(config['SRCEXT'])]
+        except Exception:
+            pass
+        if not src_files:
+            print('No source files found matching pattern ' + os.path.join(target['SRCPATH'], '*.' + config['SRCEXT']))
+            continue
     if args.verbose:
         print('Processing {} source files...'.format(len(src_files)))
 
@@ -136,13 +154,12 @@ for index, target in enumerate(targets):
     new_hash_dict = {}
     obj_list = []
     modified_any = False
-    for src in src_files:
+    for src_path in src_files:
         # Setup paths for dependency, source, and object files
-        dep = os.path.splitext(src)[0] + '.' + config['DEPEXT']
-        obj = os.path.splitext(src)[0] + '.' + config['OBJEXT']
-        src_path = target['SRCPATH'] + '/' + src
-        dep_path = dep_dir + '/' + dep
-        obj_path = obj_dir + '/' + obj
+        dep = os.path.splitext(os.path.basename(src_path))[0] + '.' + config['DEPEXT']
+        obj = os.path.splitext(os.path.basename(src_path))[0] + '.' + config['OBJEXT']
+        dep_path = os.path.join(dep_dir, dep)
+        obj_path = os.path.join(obj_dir, obj)
 
         # Remove dependency and object files
         if args.remove:
@@ -229,7 +246,7 @@ for index, target in enumerate(targets):
         obj_list.append(obj_path)
 
     # Create target
-    target_path = build_dir + '/' + target['TARGET']
+    target_path = os.path.join(build_dir, target['TARGET'])
 
     # Assume file is modified
     modified = True
@@ -272,7 +289,7 @@ for index, target in enumerate(targets):
         hash_dict = {}
 
     # Write hash file
-    json.dump(hash_dict, open(build_dir + '/.hashes.json', 'w'), indent=1, sort_keys=True)
+    json.dump(hash_dict, open(os.path.join(build_dir, hashes_file), 'w'), indent=1, sort_keys=True)
 
     # Run executable
     if not args.remove:

@@ -2,7 +2,7 @@
 #
 # Target:   all
 
-from helloworld import helloworld
+from helloworld import helloworld, src_files
 
 targets = [
     helloworld
