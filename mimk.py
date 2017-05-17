@@ -19,24 +19,26 @@ def sha256file(filename, ext=''):
 
 # Evaluate rule by replacing variables
 def eval_rule(rule):
-    # Split rule into list
-    rule_list = rule.split(' ')
-    # Replace with config parameters
-    for index, r in enumerate(rule_list):
-        if r[0] == '$':
-            pos = r.find('/')
-            if pos == -1:
-                pos = len(r)
-            if r[1:pos] in config.keys():
-                rule_list[index] = rule_list[index].replace(r[0:pos], config[r[1:pos]])
-    return ' '.join(rule_list)
+    if rule:
+        # Split rule into list
+        rule_list = rule.split(' ')
+        # Replace with config parameters
+        for index, r in enumerate(rule_list):
+            if r[0] == '$':
+                pos = r.find('/')
+                if pos == -1:
+                    pos = len(r)
+                if r[1:pos] in config.keys():
+                    rule_list[index] = rule_list[index].replace(r[0:pos], config[r[1:pos]])
+        return ' '.join(rule_list)
 
 
 # Issue command
 def command(cmd):
-    if args.verbose:
-        print(cmd)
-    os.system(cmd)
+    if cmd:
+        if args.verbose:
+            print(cmd)
+        os.system(cmd)
 
 
 # Make directory
@@ -132,7 +134,7 @@ for index, target in enumerate(targets):
 
     # Get source files list
     src_files = []
-    if target_module.src_files:
+    if getattr(target_module, 'src_files', None):
         # Get list of source files from target configuration
         src_files = target_module.src_files
         if not files_exist(src_files):
