@@ -24,16 +24,20 @@ Usage:
 ```
 
 ## Examples
-Make target 'all' with GCC compiler and release options: ```
+Make target 'all' with GCC compiler and release options:
+```
     python mimk.py all
 ```
-Make target 'all' with GCC compiler and debug options: ```
+Make target 'all' with GCC compiler and debug options:
+```
     python mimk.py -c gcc_debug.py all
 ```
-Remove intermediate files: ```
+Remove intermediate files:
+```
     python mimk.py -r all
 ```
-Be verbose: ```
+Be verbose:
+```
     python mimk.py -v all
 ```
 
@@ -51,11 +55,13 @@ The target configuration file contains information about how to build the target
 The entry point is the variable 'targets', which contains a list of targets that will be build.
 Each target is defined by a dictionary with the following keys:
 * 'TARGET':  Target filename
-* 'SRCPATH': Path to folder holding the source files
+* 'SRCPATH' (optional): Path to folder holding the source files 
 * 'DEPRULE': Rule that describes how to generate dependency files
 * 'SRCRULE': Rule that describes how to compile source files 
 * 'OBJRULE': Rule that describes how to compile/link object files
 * 'EXERULE': Rule that describes how to execute the resulting target executable
+If you want mimk to use all source files in one folder, define 'SRCPATH' as the path to that folder (mimk will then collect all files matching $SRCPATH/*.$SRCEXT)
+If you rather want to provide a list with all source files, define them (with relative path) in the list variable 'src_files'.
 
 ## Compiler configuration
 The compiler configuration file contains information about compilers, linkers and flags.
