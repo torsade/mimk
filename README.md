@@ -64,8 +64,13 @@ Each target is defined by a dictionary with the following keys:
 | 'OBJRULE' | Rule that describes how to compile/link object files               | Required  |
 | 'EXERULE' | Rule that describes how to execute the resulting target executable | Optional  |
 
+### Source files
 If you want mimk to use all source files in one folder, define 'SRCPATH' as the path to that folder (mimk will then collect all files matching $SRCPATH/*.$SRCEXT)
 Instead, if you rather want to provide a list with all source files, define them (with relative path) in the list variable 'src_files'.
+
+### Rules
+Rules are strings that may contain variables, which have '$' as a prefix (similar to rules in GNU make).
+During runtime, these variables are evaluated and replaced by effective values (paths, executables, etc.).
 
 ## Compiler configuration
 The compiler configuration file contains information about compilers, linkers and flags.
@@ -73,15 +78,16 @@ If no compiler configuration file is given, the default file 'gcc_release.py' is
 The entry point if the dictionary variable 'config'.
 The following keys are supported:
 
-| Key       | Description                            | Default       |
-| --------- | -------------------------------------- | ------------- |
-| 'BUILD'   | Name of the compiler configuration     | 'gcc_release' |
-| 'DEPPATH' | Name of subfolder for dependency files | 'dep'         |
-| 'OBJPATH' | Name of subfolder for object files     | 'obj'         |
-| 'SRCEXT'  | Extension of source files              | 'c'           |
-| 'INCEXT'  | Extension of include files             | 'h'           |
-| 'DEPEXT'  | Extension of dependency files          | 'd'           |
-| 'OBJEXT'  | Extension of object files              | 'o'           |
+| Key        | Description                              | Default       |
+| ---------- | ---------------------------------------- | ------------- |
+| 'BUILD'    | Name of the compiler configuration       | 'gcc_release' |
+| 'DEPPATH'  | Name of subfolder for dependency files   | 'dep'         |
+| 'OBJPATH'  | Name of subfolder for object files       | 'obj'         |
+| 'SRCEXT'   | Extension of source files                | 'c'           |
+| 'INCEXT'   | Extension of include files               | 'h'           |
+| 'DEPEXT'   | Extension of dependency files            | 'd'           |
+| 'OBJEXT'   | Extension of object files                | 'o'           |
+| 'OBJ_LIST' | List of object files, created at runtime |               |
 
 Although the keys used within target rules can be freely defined, these keys are typical:
 
