@@ -4,6 +4,7 @@ import hashlib
 import importlib
 import json
 import os
+import subprocess
 
 
 # Get SHA-256 hash of file
@@ -38,7 +39,17 @@ def command(cmd):
     if cmd:
         if args.verbose:
             print(cmd)
-        os.system(cmd)
+        try:
+            ret = subprocess.call(cmd, shell=True)
+            if ret < 0:
+                print ('Command {} terminated by signal {}'.format(cmd.split(' ')[0], -ret))
+                quit()
+            elif ret > 0:
+                print ('Command {} returned error {}'.format(cmd.split(' ')[0], ret))
+                quit()
+        except OSError as e:
+            print ('Command execution failed: ' + e)
+            quit()
 
 
 # Make directory
