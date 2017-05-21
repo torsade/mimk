@@ -50,6 +50,12 @@ This allows several shortcuts:
 * defining compiler-dependant options using 'if...else' conditions
 However, mimk does not execute any functions within these configuration files, but rather uses variables defined in them.
 
+## Configuration Search Path
+If a sub-folder 'cfg' exists and contains a file '__init__.py', mimk first looks into that folder.
+Otherwise, mimk tries to load the configuration files from the current working directory.
+Multiple levels of sub-folders can be addressed by using a '.' as path separator (e.g. 'example.all' for the path 'cfg/example/all.py').
+Please note that all sub-folders have to contain an empty file called '__init__.py' as otherwise mimk will not be able to import the configuration file as a module.
+
 ## Target Configuration
 The target configuration file contains information about how to build the target(s).
 The entry point is the variable 'targets', which contains a list of targets that will be build.

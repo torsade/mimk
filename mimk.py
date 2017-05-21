@@ -92,15 +92,13 @@ config_dir = 'cfg'
 if not os.path.isdir(config_dir):
     config_dir = ''
 try:
-    target_path = config_dir + ('' if config_dir == '' else '.') + args.target
-    target_module = importlib.import_module(target_path, package=None)
+    target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
     targets = target_module.targets
 except Exception:
     print('Could not find target file ' + os.path.join(config_dir, args.target) + '.py')
     quit()
 try:
-    config_path = config_dir + ('' if config_dir == '' else '.') + args.config
-    config_module = importlib.import_module(config_path, package=None)
+    config_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.config, package=None)
     config = config_module.config
 except Exception:
     print('Could not find config file ' + os.path.join(config_dir, args.config) + '.py')
