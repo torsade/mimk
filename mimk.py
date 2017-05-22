@@ -7,6 +7,12 @@ import os
 import subprocess
 
 
+# Remove duplicates from list
+def unique_list(list):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in list if not (x in seen or seen_add(x))]
+
 # Get SHA-256 hash of file
 def sha256file(filename, ext=''):
     hash_sha256 = hashlib.sha256()
@@ -124,19 +130,19 @@ except Exception:
     hash_dict = {}
 hash_src = 0
 hash_inc = 0
-hash_dep = 0
+hash_trgt = 0
 for hash_key in hash_dict.keys():
     hash_ext = os.path.splitext(hash_key)[1][1:]
     if hash_ext == config['SRCEXT']:
         hash_src += 1
     elif hash_ext == config['INCEXT']:
         hash_inc += 1
-    elif hash_ext == config['DEPEXT']:
-        hash_dep += 1
+    else:
+        hash_trgt += 1
 
 # Print statistics
 if args.verbose:
-    print('Loaded hash dictionary with {} entries (src: {}, inc: {}, dep: {}).'.format(len(hash_dict), hash_src, hash_inc, hash_dep))
+    print('Loaded hash dictionary with {} entries (src: {}, inc: {}, trgt: {}).'.format(len(hash_dict), hash_src, hash_inc, hash_trgt))
 
 # Process targets
 for index, target in enumerate(targets):
@@ -179,8 +185,6 @@ for index, target in enumerate(targets):
 
         # Remove dependency and object files
         if args.remove:
-            hash_dict.pop(dep_path, None)
-            hash_dict.pop(obj_path, None)
             remove(dep_path)
             remove(obj_path)
             continue
@@ -190,40 +194,14 @@ for index, target in enumerate(targets):
         config['DEP_PATH'] = dep_path
         config['OBJ_PATH'] = obj_path
 
-        # Check if dependency file has been modified by checking its SHA-256 hash against a list of known hashes
-        try:
-            hash = sha256file(dep_path)
-        except Exception:
-            hash = ''
-
-        # Assume file is modified unless its hash is already in the list
-        modified = True
-        if dep_path in hash_dict.keys():
-            if hash_dict[dep_path] == hash:
-                modified = False
-        if modified:
-            # Append hash to list
-            hash_dict[dep_path] = hash
-
-            # Set modified_any flag
-            modified_any = True
-
-            # Get dependencies
+        # Create dependency file
+        if not os.path.exists(dep_path):
             dep_cmd = eval_rule(target['DEPRULE'])
             command(dep_cmd)
 
-            # Append hash of newly generated file to list
-            try:
-                hash = sha256file(dep_path)
-                hash_dict[dep_path] = hash
-            except Exception:
-                pass
-
         # Get list of dependencies
-        dependencies = filter(None, open(dep_path, 'r').read().translate(None, ':\\\n\r').split(' '))
-
-        # Append source file to dependencies
-        dependencies.append(src_path)
+        dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, ':\n\r').split(' '))
+        dependencies = unique_list([d for d in dependencies if d != '/'])
 
         # Sanity check
         if dependencies[0] != obj:
@@ -234,8 +212,7 @@ for index, target in enumerate(targets):
         modified = False
 
         # Check for all dependencies, starting with second (first is resulting object file)
-        for dep_path in dependencies[2:]:
-
+        for dep_path in dependencies[1:]:
             # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
             hash = sha256file(dep_path)
 
@@ -243,20 +220,23 @@ for index, target in enumerate(targets):
                 if hash_dict[dep_path] != hash:
                     # Different hash, so file has been modified
                     modified = True
+                    break
             else:
                 # New file, mark as modified
                 modified = True
+                break
 
         if modified:
-            # Add hash to new dictionary
-            new_hash_dict[dep_path] = hash
-
             # Set modified_any flag
             modified_any = True
 
             # Compile source file
             src_cmd = eval_rule(target['SRCRULE'])
             command(src_cmd)
+
+            # Add dependencies' hashes to new dictionary
+            for dep_path in dependencies[1:]:
+                new_hash_dict[dep_path] = sha256file(dep_path)
 
         # After object file has been compiled, append it to list
         obj_list.append(obj_path)
@@ -282,7 +262,6 @@ for index, target in enumerate(targets):
     # Handle target file
     if args.remove:
         # Remove target file
-        hash_dict.pop(target_path, None)
         remove(target_path, '.exe')
     else:
         # Create target file
