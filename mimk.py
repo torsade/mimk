@@ -162,12 +162,14 @@ for index, target in enumerate(targets):
             continue
     else:
         # Get list of all SRCEXT files from SRCPATH
+        src_files = [];
         try:
-            src_files = [os.path.join(target['SRCPATH'], fn) for fn in os.listdir(target['SRCPATH']) if fn.endswith(config['SRCEXT'])]
+            for src_path in target['SRCPATH'].split(' '):
+                src_files.extend([os.path.join(src_path, fn) for fn in os.listdir(src_path) if fn.endswith(config['SRCEXT'])])
         except Exception:
             pass
         if not src_files:
-            print('No source files found matching pattern ' + os.path.join(target['SRCPATH'], '*.' + config['SRCEXT']))
+            print('No source files found matching pattern (' + os.path.join(target['SRCPATH'], ')*.' + config['SRCEXT']))
             continue
     if args.verbose:
         print('Processing {} source files...'.format(len(src_files)))
