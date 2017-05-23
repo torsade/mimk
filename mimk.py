@@ -243,17 +243,35 @@ for index, target in enumerate(targets):
 
     # Create target
     target_path = os.path.join(build_dir, target['TARGET'])
+    target_path_dict = build_dir + '/' + target['TARGET']
 
-    # Assume file is modified
-    modified = True
-    if target_path in hash_dict.keys():
+    # Assume file is not modified unless one dependency file's hash is either missing or has changed
+    modified = False
+
+    # Handle additional dependencies
+    if 'DEPENDS' in target:
+        config['DEPENDS'] = eval_rule(target['DEPENDS'])
+        depends = config['DEPENDS'].split(' ')
+        for dep in depends:
+            try:
+                hash = sha256file(dep, '.exe')
+                if hash_dict[dep] != hash:
+                    modified = True
+            except Exception:
+                hash = ''
+                modified = True
+
+    if target_path_dict in hash_dict.keys():
         # Check if target file has been modified by checking its SHA-256 hash against a list of known hashes
         try:
             hash = sha256file(target_path, '.exe')
-            if hash_dict[target_path] == hash:
-                modified = False
+            if hash_dict[target_path_dict] != hash:
+                modified = True
         except Exception:
             hash = ''
+            modified = True
+    else:
+        modified = True
 
     # Add target path and object list to current config
     config['TARGET'] = target_path
@@ -272,7 +290,7 @@ for index, target in enumerate(targets):
             # Append hash of newly generated file to list
             try:
                 hash = sha256file(target_path, '.exe')
-                hash_dict[target_path] = hash
+                hash_dict[target_path_dict] = hash
             except Exception:
                 pass
 
