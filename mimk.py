@@ -25,37 +25,44 @@ def sha256file(filename, ext=''):
 
 
 # Evaluate rule by replacing variables
-def eval_rule(rule):
-    if rule:
-        # Split rule into list
-        rule_list = rule.split(' ')
-        # Replace with config parameters
-        for index, r in enumerate(rule_list):
-            if r[0] == '$':
-                pos = r.find('/')
-                if pos == -1:
-                    pos = len(r)
-                if r[1:pos] in config.keys():
-                    rule_list[index] = rule_list[index].replace(r[0:pos], config[r[1:pos]])
-        return ' '.join(rule_list)
+def eval_rule(rule_str):
+    if rule_str:
+        # Split rule string into statements
+        rule_statements = rule_str.split(';')
+        new_statements = []
+        for rule in rule_statements:
+            # Split rule into list
+            rule_list = rule.split(' ')
+            # Replace with config parameters
+            for index, r in enumerate(rule_list):
+                if r[0] == '$':
+                    pos = r.find('/')
+                    if pos == -1:
+                        pos = len(r)
+                    if r[1:pos] in config.keys():
+                        rule_list[index] = rule_list[index].replace(r[0:pos], config[r[1:pos]])
+            new_statements.append (' '.join(rule_list))
+        return ';'.join(new_statements)
 
 
 # Issue command
-def command(cmd):
-    if cmd:
-        if args.verbose:
-            print(cmd)
-        try:
-            ret = subprocess.call(cmd, shell=True)
-            if ret < 0:
-                print ('Command {} terminated by signal {}'.format(cmd.split(' ')[0], -ret))
+def run_command(command_str):
+    if command_str:
+        command_list = command_str.split(';');
+        for command in command_list:
+            if args.verbose:
+                print(command)
+            try:
+                ret = subprocess.call(command, shell=True)
+                if ret < 0:
+                    print('Command {} terminated by signal {}'.format(command.split(' ')[0], -ret))
+                    quit()
+                elif ret > 0:
+                    print('Command {} returned error {}'.format(command.split(' ')[0], ret))
+                    quit()
+            except OSError as e:
+                print('Command execution failed: ' + e)
                 quit()
-            elif ret > 0:
-                print ('Command {} returned error {}'.format(cmd.split(' ')[0], ret))
-                quit()
-        except OSError as e:
-            print ('Command execution failed: ' + e)
-            quit()
 
 
 # Make directory
@@ -160,9 +167,8 @@ for index, target in enumerate(targets):
         if not files_exist(src_files):
             print('At least one source file could not be found: ' + src_files)
             continue
-    else:
+    elif 'SRCPATH' in target:
         # Get list of all SRCEXT files from SRCPATH
-        src_files = [];
         try:
             for src_path in target['SRCPATH'].split(' '):
                 src_files.extend([os.path.join(src_path, fn) for fn in os.listdir(src_path) if fn.endswith(config['SRCEXT'])])
@@ -171,6 +177,7 @@ for index, target in enumerate(targets):
         if not src_files:
             print('No source files found matching pattern (' + os.path.join(target['SRCPATH'], ')*.' + config['SRCEXT']))
             continue
+
     if args.verbose:
         print('Processing {} source files...'.format(len(src_files)))
 
@@ -198,8 +205,7 @@ for index, target in enumerate(targets):
 
         # Create dependency file
         if not os.path.exists(dep_path):
-            dep_cmd = eval_rule(target['DEPRULE'])
-            command(dep_cmd)
+            run_command(eval_rule(target['DEPRULE']))
 
         # Get list of dependencies
         dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, ':\n\r').split(' '))
@@ -233,8 +239,7 @@ for index, target in enumerate(targets):
             modified_any = True
 
             # Compile source file
-            src_cmd = eval_rule(target['SRCRULE'])
-            command(src_cmd)
+            run_command(eval_rule(target['SRCRULE']))
 
             # Add dependencies' hashes to new dictionary
             for dep_path in dependencies[1:]:
@@ -257,8 +262,12 @@ for index, target in enumerate(targets):
         for dep in depends:
             try:
                 hash = sha256file(dep, '.exe')
-                if hash_dict[dep] != hash:
-                    modified = True
+                if dep in hash_dict:
+                    if hash_dict[dep] != hash:
+                        modified = True
+                        new_hash_dict[dep] = hash
+                else:
+                    new_hash_dict[dep] = hash
             except Exception:
                 hash = ''
                 modified = True
@@ -286,8 +295,7 @@ for index, target in enumerate(targets):
     else:
         # Create target file
         if modified or modified_any:
-            obj_cmd = eval_rule(target['OBJRULE'])
-            command(obj_cmd)
+            run_command(eval_rule(target['OBJRULE']))
 
             # Append hash of newly generated file to list
             try:
@@ -309,8 +317,7 @@ for index, target in enumerate(targets):
     # Run executable
     if not args.remove:
         if 'EXERULE' in target.keys():
-            exe_cmd = os.path.join(*eval_rule(target['EXERULE']).split('/'))
-            command(exe_cmd)
+            run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
 
 # End message
 print('Done.')
