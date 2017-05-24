@@ -205,7 +205,8 @@ for index, target in enumerate(targets):
 
         # Create dependency file
         if not os.path.exists(dep_path):
-            run_command(eval_rule(target['DEPRULE']))
+            if 'DEPRULE' in target:
+                run_command(eval_rule(target['DEPRULE']))
 
         # Get list of dependencies
         dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, ':\n\r').split(' '))
@@ -239,7 +240,8 @@ for index, target in enumerate(targets):
             modified_any = True
 
             # Compile source file
-            run_command(eval_rule(target['SRCRULE']))
+            if 'SRCRULE' in target:
+                run_command(eval_rule(target['SRCRULE']))
 
             # Add dependencies' hashes to new dictionary
             for dep_path in dependencies[1:]:
@@ -295,7 +297,8 @@ for index, target in enumerate(targets):
     else:
         # Create target file
         if modified or modified_any:
-            run_command(eval_rule(target['OBJRULE']))
+            if 'OBJRULE' in target:
+                run_command(eval_rule(target['OBJRULE']))
 
             # Append hash of newly generated file to list
             try:
