@@ -4,6 +4,7 @@ import hashlib
 import importlib
 import json
 import os
+import string
 import subprocess
 
 
@@ -27,22 +28,7 @@ def sha256file(filename, ext=''):
 # Evaluate rule by replacing variables
 def eval_rule(rule_str):
     if rule_str:
-        # Split rule string into statements
-        rule_statements = rule_str.split(';')
-        new_statements = []
-        for rule in rule_statements:
-            # Split rule into list
-            rule_list = rule.split(' ')
-            # Replace with config parameters
-            for index, r in enumerate(rule_list):
-                if r[0] == '$':
-                    pos = r.find('/')
-                    if pos == -1:
-                        pos = len(r)
-                    if r[1:pos] in config.keys():
-                        rule_list[index] = rule_list[index].replace(r[0:pos], config[r[1:pos]])
-            new_statements.append (' '.join(rule_list))
-        return ';'.join(new_statements)
+        return string.Template(rule_str).safe_substitute(config)
 
 
 # Issue command
@@ -69,6 +55,7 @@ def run_command(command_str):
 def makedir(pathname):
     if not os.path.exists(pathname):
         os.makedirs(pathname)
+
 
 # Remove file
 def remove(filename, ext=''):
@@ -138,7 +125,7 @@ except Exception:
 hash_src = 0
 hash_inc = 0
 hash_trgt = 0
-for hash_key in hash_dict.keys():
+for hash_key in hash_dict:
     hash_ext = os.path.splitext(hash_key)[1][1:]
     if hash_ext == config['SRCEXT']:
         hash_src += 1
@@ -225,7 +212,7 @@ for index, target in enumerate(targets):
             # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
             hash = sha256file(dep_path)
 
-            if dep_path in hash_dict.keys():
+            if dep_path in hash_dict:
                 if hash_dict[dep_path] != hash:
                     # Different hash, so file has been modified
                     modified = True
@@ -274,7 +261,7 @@ for index, target in enumerate(targets):
                 hash = ''
                 modified = True
 
-    if target_path_dict in hash_dict.keys():
+    if target_path_dict in hash_dict:
         # Check if target file has been modified by checking its SHA-256 hash against a list of known hashes
         try:
             hash = sha256file(target_path, '.exe')
@@ -319,7 +306,7 @@ for index, target in enumerate(targets):
 
     # Run executable
     if not args.remove:
-        if 'EXERULE' in target.keys():
+        if 'EXERULE' in target:
             run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
 
 # End message
