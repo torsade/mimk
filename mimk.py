@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import datetime
 import hashlib
 import importlib
 import json
@@ -37,17 +38,17 @@ def run_command(command_str):
         command_list = command_str.split(';');
         for command in command_list:
             if args.verbose:
-                print(command)
+                print('\033[96m{}\033[0m'.format(command))
             try:
                 ret = subprocess.call(command, shell=True)
                 if ret < 0:
-                    print('Command {} terminated by signal {}'.format(command.split(' ')[0], -ret))
+                    print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
                     quit()
                 elif ret > 0:
-                    print('Command {} returned error {}'.format(command.split(' ')[0], ret))
+                    print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
                     quit()
             except OSError as e:
-                print('Command execution failed: ' + e)
+                print('\033[91mCommand execution failed: {}\033[0m'.format(e))
                 quit()
 
 
@@ -60,7 +61,7 @@ def makedir(pathname):
 # Remove file
 def remove(filename, ext=''):
     if args.verbose:
-        print('Remove ' + filename)
+        print('\033[95mRemove {}\033[0m'.format(filename))
     if not os.path.isfile(filename):
         filename = filename + ext
     if os.path.isfile(filename):
@@ -85,7 +86,7 @@ parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output
 args = parser.parse_args()
 
 # Start message
-print('mimk - Minimal make')
+print('\033[93mmimk - Minimal make\033[0m')
 
 # Import target and config
 config_dir = 'cfg'
@@ -95,16 +96,16 @@ try:
     target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
     targets = target_module.targets
 except Exception:
-    print('Could not find target file ' + os.path.join(config_dir, args.target) + '.py')
+    print('\033[91mCould not find target file {}.py\033[0m'.format(os.path.join(config_dir, args.target)))
     quit()
 try:
     config_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.config, package=None)
     config = config_module.config
 except Exception:
-    print('Could not find config file ' + os.path.join(config_dir, args.config) + '.py')
+    print('\033[91mCould not find config file {}.py\033[0m'.format(os.path.join(config_dir, args.config)))
     quit()
 if args.verbose:
-    print('Build:  ' + config['BUILD'])
+    print('Build:  \033[96m{}\033[0m'.format(config['BUILD']))
 
 
 # Create build directory and sub-folders
@@ -122,29 +123,29 @@ try:
     hash_dict = json.load(open(os.path.join(build_dir, hashes_file), 'r'))
 except Exception:
     hash_dict = {}
-hash_src = 0
-hash_inc = 0
-hash_trgt = 0
-for hash_key in hash_dict:
-    hash_ext = os.path.splitext(hash_key)[1][1:]
-    if hash_ext == config['SRCEXT']:
-        hash_src += 1
-    elif hash_ext == config['INCEXT']:
-        hash_inc += 1
-    else:
-        hash_trgt += 1
 
 # Print statistics
 if args.verbose:
+    hash_src = 0
+    hash_inc = 0
+    hash_trgt = 0
+    for hash_key in hash_dict:
+        hash_ext = os.path.splitext(hash_key)[1][1:]
+        if hash_ext == config['SRCEXT']:
+            hash_src += 1
+        elif hash_ext == config['INCEXT']:
+            hash_inc += 1
+        else:
+            hash_trgt += 1
     print('Loaded hash dictionary with {} entries (src: {}, inc: {}, trgt: {}).'.format(len(hash_dict), hash_src, hash_inc, hash_trgt))
 
 # Process targets
 for index, target in enumerate(targets):
     # Check target
     if 'TARGET' not in target:
-        print('No target defined in section #' + str(index) + ' of file ' + args.target + '.py')
+        print('\033[91mNo target defined in section #{} of file {}.py\033[0m'.format(str(index), args.target))
         continue
-    print('Target: ' + target['TARGET'])
+    print('Target: \033[92m{}\033[0m'.format(target['TARGET']))
 
     # Get source files list
     src_files = []
@@ -152,7 +153,7 @@ for index, target in enumerate(targets):
         # Get list of source files from target configuration
         src_files = target_module.src_files
         if not files_exist(src_files):
-            print('At least one source file could not be found: ' + src_files)
+            print('\033[91mAt least one source file could not be found: {}\033[0m'.format(src_files))
             continue
     elif 'SRCPATH' in target:
         # Get list of all SRCEXT files from SRCPATH
@@ -162,7 +163,7 @@ for index, target in enumerate(targets):
         except Exception:
             pass
         if not src_files:
-            print('No source files found matching pattern (' + os.path.join(target['SRCPATH'], ')*.' + config['SRCEXT']))
+            print('\033[91mNo source files found matching pattern ({})*.{}\033[0m'.format(target['SRCPATH'], config['SRCEXT']))
             continue
 
     if args.verbose:
@@ -201,7 +202,7 @@ for index, target in enumerate(targets):
 
         # Sanity check
         if dependencies[0] != obj:
-            print('Error: mismatch in dependency file ' + dep_path + ': Expected ' + obj + ', got ' + dependencies[0])
+            print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dependencies[0]))
             quit()
 
         # Assume file is not modified unless one dependency file's hash is either missing or has changed
@@ -307,7 +308,11 @@ for index, target in enumerate(targets):
     # Run executable
     if not args.remove:
         if 'EXERULE' in target:
+            time_start = datetime.datetime.now()
             run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
+            elapsed = datetime.datetime.now() - time_start
+            if args.verbose:
+                print('\033[92mTime: {} seconds\033[0m'.format(elapsed.total_seconds()))
 
 # End message
-print('Done.')
+print('\033[93mDone.\033[0m')
