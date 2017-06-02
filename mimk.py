@@ -96,13 +96,13 @@ try:
     target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
     targets = target_module.targets
 except Exception:
-    print('\033[91mCould not find target file {}.py\033[0m'.format(os.path.join(config_dir, args.target)))
+    print('\033[91mCould not load target file {}.py\033[0m'.format(os.path.join(config_dir, args.target)))
     quit()
 try:
     config_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.config, package=None)
     config = config_module.config
 except Exception:
-    print('\033[91mCould not find config file {}.py\033[0m'.format(os.path.join(config_dir, args.config)))
+    print('\033[91mCould not load config file {}.py\033[0m'.format(os.path.join(config_dir, args.config)))
     quit()
 if args.verbose:
     print('Build:  \033[96m{}\033[0m'.format(config['BUILD']))
@@ -197,8 +197,11 @@ for index, target in enumerate(targets):
                 run_command(eval_rule(target['DEPRULE']))
 
         # Get list of dependencies
-        dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, ':\n\r').split(' '))
+        dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, '\n\r').split(' '))
+        # Remove duplicates
         dependencies = unique_list([d for d in dependencies if d != '/'])
+        # Strip trailing ':' from first entry
+        dependencies[0] = dependencies[0][:-1]
 
         # Sanity check
         if dependencies[0] != obj:
