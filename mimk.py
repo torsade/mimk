@@ -77,6 +77,7 @@ def files_exist(file_list):
 
 
 # Main program
+version = '1.0'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -86,7 +87,7 @@ parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output
 args = parser.parse_args()
 
 # Start message
-print('\033[93mmimk - Minimal make\033[0m')
+print('\033[93mmimk - Minimal make v{}\033[0m'.format(version))
 
 # Import target and config
 config_dir = 'cfg'
@@ -109,7 +110,7 @@ if args.verbose:
 
 
 # Create build directory and sub-folders
-build_dir = 'build_' + config['BUILD']
+build_dir = os.path.join('build', config['BUILD'])
 config['BUILD_DIR'] = build_dir
 makedir(build_dir)
 dep_dir = os.path.join(build_dir, config['DEPPATH'])
@@ -169,16 +170,26 @@ for index, target in enumerate(targets):
     if args.verbose:
         print('Processing {} source files...'.format(len(src_files)))
 
+    # Run pre-processing rule
+    if not args.remove:
+        if 'PRERULE' in target:
+            run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')))
+
     # Compile all files
     new_hash_dict = {}
     obj_list = []
     modified_any = False
     for src_path in src_files:
+        # Convert separators
+        src_path = src_path.replace('/', os.sep)
+
         # Setup paths for dependency, source, and object files
-        dep = os.path.splitext(os.path.basename(src_path))[0] + '.' + config['DEPEXT']
-        obj = os.path.splitext(os.path.basename(src_path))[0] + '.' + config['OBJEXT']
+        dep = os.path.splitext(src_path)[0] + '.' + config['DEPEXT']
+        obj = os.path.splitext(src_path)[0] + '.' + config['OBJEXT']
         dep_path = os.path.join(dep_dir, dep)
         obj_path = os.path.join(obj_dir, obj)
+        makedir(os.path.split(dep_path)[0])
+        makedir(os.path.split(obj_path)[0])
 
         # Remove dependency and object files
         if args.remove:
@@ -204,8 +215,9 @@ for index, target in enumerate(targets):
         dependencies[0] = dependencies[0][:-1]
 
         # Sanity check
-        if dependencies[0] != obj:
-            print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dependencies[0]))
+        dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
+        if dep_obj_path != obj:
+            print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
             quit()
 
         # Assume file is not modified unless one dependency file's hash is either missing or has changed
@@ -316,6 +328,10 @@ for index, target in enumerate(targets):
             elapsed = datetime.datetime.now() - time_start
             if args.verbose:
                 print('\033[92mTime: {} seconds\033[0m'.format(elapsed.total_seconds()))
+
+        # Run post-processing rule
+        if 'PSTRULE' in target:
+            run_command(os.path.join(*eval_rule(target['PSTRULE']).split('/')))
 
 # End message
 print('\033[93mDone.\033[0m')
