@@ -64,21 +64,41 @@ Each target is defined by a dictionary with the following keys:
 | Key       | Description                                                        | Necessity |
 | --------- | ------------------------------------------------------------------ | --------- |
 | 'TARGET'  | Target filename                                                    | Required  |
-| 'SRCPATH' | Path to folder(s) holding the source files                         | Optional  |
+| 'SRCDIR'  | Path to folder(s) holding the source files                         | Optional  |
+| 'DEPENDS' | Additional dependencies not covered by DEPRULE                     | Optional  |
+| 'PRERULE' | Pre-processing rule                                                | Optional  |
 | 'DEPRULE' | Rule that describes how to generate dependency files               | Required  |
 | 'SRCRULE' | Rule that describes how to compile source files to object files    | Required  |
 | 'OBJRULE' | Rule that describes how to compile/link object files               | Required  |
 | 'EXERULE' | Rule that describes how to execute the resulting target executable | Optional  |
-| 'DEPENDS' | Additional dependencies not covered by DEPRULE                     | Optional  |
+| 'PSTRULE' | Post-processing rule                                               | Optional  |
 
 ### Source files
-If you want mimk to use all source files from one or multiple folders, define 'SRCPATH' as the path to those folders (mimk will then collect all files matching $SRCPATH/*.$SRCEXT).
+If you want mimk to use all source files from one or multiple folders, define 'SRCDIR' as the path to those folders (mimk will then collect all files matching $SRCDIR/*.$SRCEXT).
 Instead, if you rather want to provide a list with all source files, define them (with relative path) in the list variable 'src_files'.
 
 ### Rules
 Rules are strings that may contain variables, which have '$' as a prefix (similar to rules in GNU make).
 During runtime, these variables are evaluated and replaced by effective values (paths, executables, etc.).
 The order of execution is as given in the table above.
+
+#### Internal commands
+Internal commands provide an OS-independent way for common operations on files and directories.
+They are written in lower-case and start with an '@' sign.
+Wildcards are currently not supported.
+
+| Command   | Description                           | Parameters        |
+| --------- | --------------------------------------| ----------------- |
+| 'copy'    | Copy file                             | file, dir/file    |
+| 'move'    | Move file                             | file, dir/file    |
+| 'rename'  | Rename file                           | file, file        |
+| 'makedir' | Make directory                        | dir               |
+| 'delete'  | Delete file or directory              | dir/file          |
+| 'ok'      | Run external command, ignoring errors | external command  |
+
+
+#### Pre-processing rule
+This rule can be used to perform pre-processing steps, e.g. copying files to $SRCDIR.
 
 #### Dependency rule
 This rule describes how the dependency files are generated.
@@ -97,6 +117,9 @@ Additional dependencies not covered by 'DEPRULE' (e.g., libraries) can be added 
 
 #### Execute rule
 Finally, the execute rule describes how the resulting executable should be run, including constant parameters.
+
+#### Post-processing rule
+This rule can be used to perform post-processing steps, e.g. copying files.
 
 ## Compiler configuration
 The compiler configuration file contains information about compilers, linkers and flags.

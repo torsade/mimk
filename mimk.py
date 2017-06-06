@@ -5,6 +5,7 @@ import hashlib
 import importlib
 import json
 import os
+import shutil
 import string
 import subprocess
 
@@ -39,17 +40,44 @@ def run_command(command_str):
         for command in command_list:
             if args.verbose:
                 print('\033[96m{}\033[0m'.format(command))
-            try:
-                ret = subprocess.call(command, shell=True)
-                if ret < 0:
-                    print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
+            if command[0] == '@':
+                # Internal commands start with @
+                param = command[1:].split(' ')
+                if param[0] == 'copy':
+                    # Copy file to dir/file
+                    shutil.copy2(param[1], param[2])
+                elif param[0] == 'move':
+                    # Move file to dir/file
+                    shutil.copy2(param[1], param[2])
+                    os.remove(param[1])
+                elif param[0] == 'rename':
+                    # Rename file to file
+                    os.rename(param[1], param[2])
+                elif param[0] == 'makedir':
+                    # Makedir
+                    os.makedirs(param[1])
+                elif param[0] == 'delete':
+                    # Delete dir/file
+                    if os.path.isfile(param[1]):
+                        os.remove(param[1])
+                    elif os.path.isdir(param[1]):
+                        os.removedirs(param[1])
+                elif param[0] == 'ok':
+                    # Run external command, ignoring errors
+                    subprocess.call(param[1], shell=True)
+            else:
+                # External command
+                try:
+                    ret = subprocess.call(command, shell=True)
+                    if ret < 0:
+                        print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
+                        quit()
+                    elif ret > 0:
+                        print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
+                        quit()
+                except OSError as e:
+                    print('\033[91mCommand execution failed: {}\033[0m'.format(e))
                     quit()
-                elif ret > 0:
-                    print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
-                    quit()
-            except OSError as e:
-                print('\033[91mCommand execution failed: {}\033[0m'.format(e))
-                quit()
 
 
 # Make directory
@@ -77,7 +105,8 @@ def files_exist(file_list):
 
 
 # Main program
-version = '1.0'
+mimk_version = '1.0'
+mimk_date = '2017-06-06'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -87,7 +116,7 @@ parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output
 args = parser.parse_args()
 
 # Start message
-print('\033[93mmimk - Minimal make v{}\033[0m'.format(version))
+print('\033[93mmimk - Minimal make v{} ({})\033[0m'.format(mimk_version, mimk_date))
 
 # Import target and config
 config_dir = 'cfg'
@@ -148,6 +177,13 @@ for index, target in enumerate(targets):
         continue
     print('Target: \033[92m{}\033[0m'.format(target['TARGET']))
 
+    # Run pre-processing rule
+    if 'SRCDIR' in target:
+        config['SRCDIR'] = target['SRCDIR']
+    if not args.remove:
+        if 'PRERULE' in target:
+            run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')))
+
     # Get source files list
     src_files = []
     if getattr(target_module, 'src_files', None):
@@ -156,24 +192,19 @@ for index, target in enumerate(targets):
         if not files_exist(src_files):
             print('\033[91mAt least one source file could not be found: {}\033[0m'.format(src_files))
             continue
-    elif 'SRCPATH' in target:
-        # Get list of all SRCEXT files from SRCPATH
+    elif 'SRCDIR' in target:
+        # Get list of all SRCEXT files from SRCDIR
         try:
-            for src_path in target['SRCPATH'].split(' '):
-                src_files.extend([os.path.join(src_path, fn) for fn in os.listdir(src_path) if fn.endswith(config['SRCEXT'])])
+            for src_dir in target['SRCDIR'].split(' '):
+                src_files.extend([os.path.join(src_dir, fn) for fn in os.listdir(src_dir) if fn.endswith(config['SRCEXT'])])
         except Exception:
             pass
         if not src_files:
-            print('\033[91mNo source files found matching pattern ({})*.{}\033[0m'.format(target['SRCPATH'], config['SRCEXT']))
+            print('\033[91mNo source files found matching pattern ({})*.{}\033[0m'.format(target['SRCDIR'], config['SRCEXT']))
             continue
 
     if args.verbose:
         print('Processing {} source files...'.format(len(src_files)))
-
-    # Run pre-processing rule
-    if not args.remove:
-        if 'PRERULE' in target:
-            run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')))
 
     # Compile all files
     new_hash_dict = {}

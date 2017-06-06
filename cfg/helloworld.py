@@ -8,7 +8,7 @@ src_files = [
 
 helloworld = {
     'TARGET':   'helloworld',
-    'SRCPATH':  'examples/helloworld',
+    'SRCDIR':   'examples/helloworld',
 
     'DEPRULE':  '$DEP $DEPFLAGS $DEP_PATH $SRC_PATH',
     'SRCRULE':  '$CC $CFLAGS -c $SRC_PATH -o $OBJ_PATH',
