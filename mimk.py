@@ -33,53 +33,6 @@ def eval_rule(rule_str):
         return string.Template(rule_str).safe_substitute(config)
 
 
-# Issue command
-def run_command(command_str):
-    if command_str:
-        command_list = command_str.split(';');
-        for command in command_list:
-            if args.verbose:
-                print('\033[96m{}\033[0m'.format(command))
-            if command[0] == '@':
-                # Internal commands start with @
-                param = command[1:].split(' ')
-                if param[0] == 'copy':
-                    # Copy file to dir/file
-                    shutil.copy2(param[1], param[2])
-                elif param[0] == 'move':
-                    # Move file to dir/file
-                    shutil.copy2(param[1], param[2])
-                    os.remove(param[1])
-                elif param[0] == 'rename':
-                    # Rename file to file
-                    os.rename(param[1], param[2])
-                elif param[0] == 'makedir':
-                    # Makedir
-                    os.makedirs(param[1])
-                elif param[0] == 'delete':
-                    # Delete dir/file
-                    if os.path.isfile(param[1]):
-                        os.remove(param[1])
-                    elif os.path.isdir(param[1]):
-                        os.removedirs(param[1])
-                elif param[0] == 'ok':
-                    # Run external command, ignoring errors
-                    subprocess.call(param[1], shell=True)
-            else:
-                # External command
-                try:
-                    ret = subprocess.call(command, shell=True)
-                    if ret < 0:
-                        print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
-                        quit()
-                    elif ret > 0:
-                        print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
-                        quit()
-                except OSError as e:
-                    print('\033[91mCommand execution failed: {}\033[0m'.format(e))
-                    quit()
-
-
 # Make directory
 def makedir(pathname):
     if not os.path.exists(pathname):
@@ -104,9 +57,56 @@ def files_exist(file_list):
     return all(exist_list)
 
 
+# Issue command
+def run_command(command_str):
+    if command_str:
+        command_list = command_str.split(';');
+        for command in command_list:
+            if args.verbose:
+                print('\033[96m{}\033[0m'.format(command))
+            if command[0] == '@':
+                # Internal commands start with @
+                param = command[1:].split(' ')
+                if param[0] == 'copy':
+                    # Copy file to dir/file
+                    shutil.copy2(param[1], param[2])
+                elif param[0] == 'move':
+                    # Move file to dir/file
+                    shutil.copy2(param[1], param[2])
+                    os.remove(param[1])
+                elif param[0] == 'rename':
+                    # Rename file to file
+                    os.rename(param[1], param[2])
+                elif param[0] == 'makedir':
+                    # Makedir
+                    makedir(param[1])
+                elif param[0] == 'delete':
+                    # Delete dir/file
+                    if os.path.isfile(param[1]):
+                        os.remove(param[1])
+                    elif os.path.isdir(param[1]):
+                        os.removedirs(param[1])
+                elif param[0] == 'ok':
+                    # Run external command, ignoring errors
+                    subprocess.call(param[1], shell=True)
+            else:
+                # External command
+                try:
+                    ret = subprocess.call(command, shell=True)
+                    if ret < 0:
+                        print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
+                        quit()
+                    elif ret > 0:
+                        print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
+                        quit()
+                except OSError as e:
+                    print('\033[91mCommand execution failed: {}\033[0m'.format(e))
+                    quit()
+
+
 # Main program
-mimk_version = '1.0'
-mimk_date = '2017-06-06'
+mimk_version = '1.1'
+mimk_date = '2017-06-08'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -118,21 +118,28 @@ args = parser.parse_args()
 # Start message
 print('\033[93mmimk - Minimal make v{} ({})\033[0m'.format(mimk_version, mimk_date))
 
-# Import target and config
+# Set config path
 config_dir = 'cfg'
 if not os.path.isdir(config_dir):
     config_dir = ''
+
+# Check init file and create it if it doesn't exist
+init_file = os.path.join(config_dir, '__init__.py')
+if not os.path.isfile(init_file):
+    open(init_file, 'a').close()
+
+# Import target and config
 try:
     target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
     targets = target_module.targets
-except Exception:
-    print('\033[91mCould not load target file {}.py\033[0m'.format(os.path.join(config_dir, args.target)))
+except ImportError as e:
+    print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
     quit()
 try:
     config_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.config, package=None)
     config = config_module.config
-except Exception:
-    print('\033[91mCould not load config file {}.py\033[0m'.format(os.path.join(config_dir, args.config)))
+except ImportError as e:
+    print('\033[91mCould not load config file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.config), e))
     quit()
 if args.verbose:
     print('Build:  \033[96m{}\033[0m'.format(config['BUILD']))
@@ -175,6 +182,7 @@ for index, target in enumerate(targets):
     if 'TARGET' not in target:
         print('\033[91mNo target defined in section #{} of file {}.py\033[0m'.format(str(index), args.target))
         continue
+    config['TARGET'] = target['TARGET']
     print('Target: \033[92m{}\033[0m'.format(target['TARGET']))
 
     # Run pre-processing rule
@@ -321,7 +329,7 @@ for index, target in enumerate(targets):
         modified = True
 
     # Add target path and object list to current config
-    config['TARGET'] = target_path
+    config['TARGET_PATH'] = target_path
     config['OBJ_LIST'] = ' '.join(obj_list)
 
     # Handle target file

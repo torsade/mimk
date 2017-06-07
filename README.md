@@ -96,7 +96,6 @@ Wildcards are currently not supported.
 | 'delete'  | Delete file or directory              | dir/file          |
 | 'ok'      | Run external command, ignoring errors | external command  |
 
-
 #### Pre-processing rule
 This rule can be used to perform pre-processing steps, e.g. copying files to $SRCDIR.
 
@@ -119,12 +118,12 @@ Additional dependencies not covered by 'DEPRULE' (e.g., libraries) can be added 
 Finally, the execute rule describes how the resulting executable should be run, including constant parameters.
 
 #### Post-processing rule
-This rule can be used to perform post-processing steps, e.g. copying files.
+This rule can be used to perform post-processing steps, e.g. copying, moving, deleting or renaming files.
 
 ## Compiler configuration
 The compiler configuration file contains information about compilers, linkers and flags.
 If no compiler configuration file is given, the default file 'gcc_release.py' is used.
-The entry point if the dictionary variable 'config'.
+The entry point is the dictionary variable 'config'.
 The following keys are supported:
 
 | Key        | Description                              | Default       |
@@ -136,11 +135,25 @@ The following keys are supported:
 | 'INCEXT'   | Extension of include files               | 'h'           |
 | 'DEPEXT'   | Extension of dependency files            | 'd'           |
 | 'OBJEXT'   | Extension of object files                | 'o'           |
-| 'OBJ_LIST' | List of object files, created at runtime |               |
 
-Please note that the key 'OBJ_LIST' holds a list of all generated object files after 'SRCRULE' has completed.
-The purpose is to use it subsequently in the 'OBJRULE' step, namely for the linker.
+### Keys created during runtime
+Some keys are dynamically generated during runtime and can be used within rules.
+To distinguish them from user-provided keys, they all contain an underscore '_' in their name.
+The following keys are available:
 
+| Key           | Description                          | Generation                                      | Available |
+| ------------- | ------------------------------------ | ----------------------------------------------- | --------- |
+| 'BUILD_DIR'   | Build directory                      | 'build/' + compiler config name                 | Start     |
+| 'SRC_PATH'    | Source path                          | <src_files> or SRCDIR/*.SRCEXT                  | DEPRULE   |
+| 'DEP_PATH'    | Path to dependency file in build dir | BUILD_DIR/DEPPATH/SRCPATH with DEPEXT extension | DEPRULE   |
+| 'OBJ_PATH'    | Path to object file in build dir     | BUILD_DIR/OBJPATH/SRCPATH with OBJEXT extension | DEPRULE   |
+| 'TARGET_PATH' | Path to target file in build dir     | BUILD_DIR/TARGET                                | OBJRULE   |
+| 'OBJ_LIST'    | List of object files                 | List of all generated OBJ_PATH files            | OBJRULE   |
+
+Please note that the key 'OBJ_LIST' holds a list of all generated object files.
+The purpose is to use it in the 'OBJRULE' step, namely for the linker.
+
+### Examples for typical target keys
 Although the keys used within target rules can be freely defined, these keys are typical:
 
 | Key        | Description                        | Example   |
