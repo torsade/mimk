@@ -60,6 +60,8 @@ def files_exist(file_list):
 # Issue command
 def run_command(command_str):
     if command_str:
+        # Remember current working directory
+        wd = os.getcwd()
         command_list = command_str.split(';');
         for command in command_list:
             if args.verbose:
@@ -86,6 +88,9 @@ def run_command(command_str):
                         os.remove(param[1])
                     elif os.path.isdir(param[1]):
                         os.removedirs(param[1])
+                elif param[0] == 'cd':
+                    # Change directory
+                    os.chdir(param[1])
                 elif param[0] == 'ok':
                     # Run external command, ignoring errors
                     subprocess.call(param[1], shell=True)
@@ -102,10 +107,12 @@ def run_command(command_str):
                 except OSError as e:
                     print('\033[91mCommand execution failed: {}\033[0m'.format(e))
                     quit()
+        # Restore working directory
+        os.chdir(wd)
 
 
 # Main program
-mimk_version = '1.1'
+mimk_version = '1.2'
 mimk_date = '2017-06-08'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
@@ -128,18 +135,20 @@ init_file = os.path.join(config_dir, '__init__.py')
 if not os.path.isfile(init_file):
     open(init_file, 'a').close()
 
-# Import target and config
-try:
-    target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
-    targets = target_module.targets
-except ImportError as e:
-    print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
-    quit()
+# Import config and target
 try:
     config_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.config, package=None)
     config = config_module.config
 except ImportError as e:
     print('\033[91mCould not load config file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.config), e))
+    quit()
+try:
+    target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
+    targets = target_module.targets
+    if hasattr(target_module, 'config'):
+        config.update(target_module.config)
+except ImportError as e:
+    print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
     quit()
 if args.verbose:
     print('Build:  \033[96m{}\033[0m'.format(config['BUILD']))
@@ -241,41 +250,45 @@ for index, target in enumerate(targets):
         config['DEP_PATH'] = dep_path
         config['OBJ_PATH'] = obj_path
 
+        # Assume file is modified as a default
+        modified = True
+
         # Create dependency file
+        dependencies = []
         if not os.path.exists(dep_path):
             if 'DEPRULE' in target:
                 run_command(eval_rule(target['DEPRULE']))
 
-        # Get list of dependencies
-        dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, '\n\r').split(' '))
-        # Remove duplicates
-        dependencies = unique_list([d for d in dependencies if d != '/'])
-        # Strip trailing ':' from first entry
-        dependencies[0] = dependencies[0][:-1]
+                # Get list of dependencies
+                dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, '\n\r').split(' '))
+                # Remove duplicates
+                dependencies = unique_list([d for d in dependencies if d != '/'])
+                # Strip trailing ':' from first entry
+                dependencies[0] = dependencies[0][:-1]
 
-        # Sanity check
-        dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
-        if dep_obj_path != obj:
-            print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
-            quit()
+                # Sanity check
+                dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
+                if dep_obj_path != obj:
+                    print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
+                    quit()
 
-        # Assume file is not modified unless one dependency file's hash is either missing or has changed
-        modified = False
+                # Assume file is not modified unless one dependency file's hash is either missing or has changed
+                modified = False
 
-        # Check for all dependencies, starting with second (first is resulting object file)
-        for dep_path in dependencies[1:]:
-            # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
-            hash = sha256file(dep_path)
+                # Check for all dependencies, starting with second (first is resulting object file)
+                for dep_path in dependencies[1:]:
+                    # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
+                    hash = sha256file(dep_path)
 
-            if dep_path in hash_dict:
-                if hash_dict[dep_path] != hash:
-                    # Different hash, so file has been modified
-                    modified = True
-                    break
-            else:
-                # New file, mark as modified
-                modified = True
-                break
+                    if dep_path in hash_dict:
+                        if hash_dict[dep_path] != hash:
+                            # Different hash, so file has been modified
+                            modified = True
+                            break
+                    else:
+                        # New file, mark as modified
+                        modified = True
+                        break
 
         if modified:
             # Set modified_any flag
@@ -286,8 +299,9 @@ for index, target in enumerate(targets):
                 run_command(eval_rule(target['SRCRULE']))
 
             # Add dependencies' hashes to new dictionary
-            for dep_path in dependencies[1:]:
-                new_hash_dict[dep_path] = sha256file(dep_path)
+            if dependencies:
+                for dep_path in dependencies[1:]:
+                    new_hash_dict[dep_path] = sha256file(dep_path)
 
         # After object file has been compiled, append it to list
         obj_list.append(obj_path)
