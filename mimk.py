@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import datetime
+import glob
 import hashlib
 import importlib
 import json
@@ -69,31 +70,33 @@ def run_command(command_str):
             if command[0] == '@':
                 # Internal commands start with @
                 param = command[1:].split(' ')
-                if param[0] == 'copy':
-                    # Copy file to dir/file
-                    shutil.copy2(param[1], param[2])
-                elif param[0] == 'move':
-                    # Move file to dir/file
-                    shutil.copy2(param[1], param[2])
-                    os.remove(param[1])
-                elif param[0] == 'rename':
-                    # Rename file to file
-                    os.rename(param[1], param[2])
-                elif param[0] == 'makedir':
-                    # Makedir
-                    makedir(param[1])
-                elif param[0] == 'delete':
-                    # Delete dir/file
-                    if os.path.isfile(param[1]):
-                        os.remove(param[1])
-                    elif os.path.isdir(param[1]):
-                        os.removedirs(param[1])
-                elif param[0] == 'cd':
-                    # Change directory
-                    os.chdir(param[1])
-                elif param[0] == 'ok':
-                    # Run external command, ignoring errors
-                    subprocess.call(param[1], shell=True)
+                src_list = glob.glob(param[1]) if '*' in param[1] else [param[1]]
+                for src_file in src_list:
+                    if param[0] == 'copy':
+                        # Copy file to dir/file
+                        shutil.copy2(src_file, param[2])
+                    elif param[0] == 'move':
+                        # Move file to dir/file
+                        shutil.copy2(src_file, param[2])
+                        os.remove(src_file)
+                    elif param[0] == 'rename':
+                        # Rename file to file
+                        os.rename(src_file, param[2])
+                    elif param[0] == 'makedir':
+                        # Makedir
+                        makedir(src_file)
+                    elif param[0] == 'delete':
+                        # Delete dir/file
+                        if os.path.isfile(src_file):
+                            os.remove(src_file)
+                        elif os.path.isdir(src_file):
+                            os.removedirs(src_file)
+                    elif param[0] == 'cd':
+                        # Change directory
+                        os.chdir(src_file)
+                    elif param[0] == 'ok':
+                        # Run external command, ignoring errors
+                        subprocess.call(src_file, shell=True)
             else:
                 # External command
                 try:
@@ -112,8 +115,8 @@ def run_command(command_str):
 
 
 # Main program
-mimk_version = '1.3'
-mimk_date = '2017-06-21'
+mimk_version = '1.4'
+mimk_date = '2017-07-10'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -126,9 +129,11 @@ args = parser.parse_args()
 print('\033[93mmimk - Minimal make v{} ({})\033[0m'.format(mimk_version, mimk_date))
 
 # Set config path
-config_dir = 'cfg'
+config_dir = 'mimk'
 if not os.path.isdir(config_dir):
-    config_dir = ''
+    config_dir = 'cfg'
+    if not os.path.isdir(config_dir):
+        config_dir = ''
 
 # Check init file and create it if it doesn't exist
 init_file = os.path.join(config_dir, '__init__.py')
@@ -273,35 +278,38 @@ for index, target in enumerate(targets):
                 run_command(eval_rule(target['DEPRULE']))
 
         # Get list of dependencies
-        dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, '\n\r').split(' '))
-        # Remove duplicates
-        dependencies = unique_list([d for d in dependencies if d != '/'])
-        # Strip trailing ':' from first entry
-        dependencies[0] = dependencies[0][:-1]
+        try:
+            dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, '\n\r').split(' '))
+            # Remove duplicates
+            dependencies = unique_list([d for d in dependencies if d != '/'])
+            # Strip trailing ':' from first entry
+            dependencies[0] = dependencies[0][:-1]
 
-        # Sanity check
-        dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
-        if dep_obj_path != obj:
-            print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
-            quit()
+            # Sanity check
+            dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
+            if dep_obj_path != obj:
+                print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
+                quit()
 
-        # Assume file is not modified unless one dependency file's hash is either missing or has changed
-        modified = False
+            # Assume file is not modified unless one dependency file's hash is either missing or has changed
+            modified = False
 
-        # Check for all dependencies, starting with second (first is resulting object file)
-        for dep_path in dependencies[1:]:
-            # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
-            hash = sha256file(dep_path)
+            # Check for all dependencies, starting with second (first is resulting object file)
+            for dep_path in dependencies[1:]:
+                # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
+                hash = sha256file(dep_path)
 
-            if dep_path in hash_dict:
-                if hash_dict[dep_path] != hash:
-                    # Different hash, so file has been modified
+                if dep_path in hash_dict:
+                    if hash_dict[dep_path] != hash:
+                        # Different hash, so file has been modified
+                        modified = True
+                        break
+                else:
+                    # New file, mark as modified
                     modified = True
                     break
-            else:
-                # New file, mark as modified
-                modified = True
-                break
+        except:
+            modified = True
 
         if modified:
             # Set modified_any flag
