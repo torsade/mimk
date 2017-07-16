@@ -115,8 +115,8 @@ def run_command(command_str):
 
 
 # Main program
-mimk_version = '1.4'
-mimk_date = '2017-07-10'
+mimk_version = '1.5'
+mimk_date = '2017-07-16'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -215,6 +215,11 @@ for index, target in enumerate(targets):
     config['TARGET'] = target['TARGET']
     print('Target: \033[92m{}\033[0m'.format(target['TARGET']))
 
+    # Create target path and add to current config
+    target_path = os.path.join(build_dir, target['TARGET'])
+    target_path_dict = build_dir + '/' + target['TARGET']
+    config['TARGET_PATH'] = target_path
+
     # Run pre-processing rule
     if 'SRCDIR' in target:
         config['SRCDIR'] = target['SRCDIR']
@@ -234,7 +239,7 @@ for index, target in enumerate(targets):
         # Get list of all SRCEXT files from SRCDIR
         try:
             for src_dir in target['SRCDIR'].split(' '):
-                src_files.extend([os.path.join(src_dir, fn) for fn in os.listdir(src_dir) if fn.endswith(config['SRCEXT'])])
+                src_files.extend([os.path.join(src_dir, fn) for fn in os.listdir(src_dir) if fn.endswith('.' + config['SRCEXT'])])
         except Exception:
             pass
         if not src_files:
@@ -327,9 +332,8 @@ for index, target in enumerate(targets):
         # After object file has been compiled, append it to list
         obj_list.append(obj_path)
 
-    # Create target
-    target_path = os.path.join(build_dir, target['TARGET'])
-    target_path_dict = build_dir + '/' + target['TARGET']
+    # Add object list to current config
+    config['OBJ_LIST'] = ' '.join(obj_list)
 
     # Assume file is not modified unless one dependency file's hash is either missing or has changed
     modified = False
@@ -362,10 +366,6 @@ for index, target in enumerate(targets):
             modified = True
     else:
         modified = True
-
-    # Add target path and object list to current config
-    config['TARGET_PATH'] = target_path
-    config['OBJ_LIST'] = ' '.join(obj_list)
 
     # Handle target file
     if args.remove:

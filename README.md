@@ -51,10 +51,9 @@ This allows several shortcuts:
 However, mimk does not execute any functions within these configuration files, but rather uses variables defined in them.
 
 ## Configuration Search Path
-If a sub-folder 'cfg' exists and contains a file '\_\_init\_\_.py', mimk first looks into that folder.
+If a sub-folder 'mimk' or 'cfg' exists, mimk first looks into that folder.
 Otherwise, mimk tries to load the configuration files from the current working directory.
 Multiple levels of sub-folders can be addressed by using a '.' as path separator (e.g. 'example.all' for the path 'cfg/example/all.py').
-Please note that all sub-folders have to contain an empty file called '\_\_init\_\_.py' as otherwise mimk will not be able to import the configuration file as a module.
 
 ## Compiler configuration
 The compiler configuration file contains information about compilers, linkers and flags.
@@ -83,7 +82,7 @@ The following keys are available:
 | 'SRC_PATH'    | Source path                          | <src_files> or SRCDIR/*.SRCEXT                  | DEPRULE   |
 | 'DEP_PATH'    | Path to dependency file in build dir | BUILD_DIR/DEPPATH/SRCPATH with DEPEXT extension | DEPRULE   |
 | 'OBJ_PATH'    | Path to object file in build dir     | BUILD_DIR/OBJPATH/SRCPATH with OBJEXT extension | DEPRULE   |
-| 'TARGET_PATH' | Path to target file in build dir     | BUILD_DIR/TARGET                                | OBJRULE   |
+| 'TARGET_PATH' | Path to target file in build dir     | BUILD_DIR/TARGET                                | Start     |
 | 'OBJ_LIST'    | List of object files                 | List of all generated OBJ_PATH files            | OBJRULE   |
 
 Please note that the key 'OBJ_LIST' holds a list of all generated object files.
@@ -134,7 +133,7 @@ The order of execution is as given in the table above.
 #### Internal commands
 Internal commands provide an OS-independent way for common operations on files and directories.
 They are written in lower-case and start with an '@' sign.
-Wildcards are currently not supported.
+Wildcards ('*') are supported.
 
 | Command   | Description                           | Parameters        |
 | --------- | ------------------------------------- | ----------------- |
