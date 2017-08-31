@@ -9,6 +9,7 @@ import os
 import shutil
 import string
 import subprocess
+import sys
 
 
 # Remove duplicates from list
@@ -42,7 +43,7 @@ def makedir(pathname):
 
 # Remove file
 def remove(filename, ext=''):
-    if args.verbose:
+    if not args.quiet:
         print('\033[95mRemove {}\033[0m'.format(filename))
     if not os.path.isfile(filename):
         filename = filename + ext
@@ -65,7 +66,7 @@ def run_command(command_str):
         wd = os.getcwd()
         command_list = command_str.split(';');
         for command in command_list:
-            if args.verbose:
+            if not args.quiet:
                 print('\033[96m{}\033[0m'.format(command))
             if command[0] == '@':
                 # Internal commands start with @
@@ -87,10 +88,13 @@ def run_command(command_str):
                         makedir(src_file)
                     elif param[0] == 'delete':
                         # Delete dir/file
-                        if os.path.isfile(src_file):
-                            os.remove(src_file)
-                        elif os.path.isdir(src_file):
+                        if os.path.isdir(src_file):
                             os.removedirs(src_file)
+                        elif os.path.isfile(src_file):
+                            os.remove(src_file)
+                        elif not os.path.isfile(src_file):
+                            if os.path.isfile(src_file + '.exe'):
+                                os.remove(src_file + '.exe')
                     elif param[0] == 'cd':
                         # Change directory
                         os.chdir(src_file)
@@ -115,13 +119,14 @@ def run_command(command_str):
 
 
 # Main program
-mimk_version = '1.5'
-mimk_date = '2017-07-16'
+mimk_version = '1.6'
+mimk_date = '2017-08-31'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
 parser.add_argument('-c', '--config', default='gcc_release', help='Compiler configuration file')
 parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files')
+parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
 args = parser.parse_args()
 
@@ -151,6 +156,9 @@ config = {
     'OBJEXT':   'o'
 }
 
+# Prevent *.pyc file creation
+sys.dont_write_bytecode=True
+
 # Import config and target
 try:
     config_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.config, package=None)
@@ -167,13 +175,12 @@ try:
 except ImportError as e:
     print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
     quit()
-if args.verbose:
+if not args.quiet:
     print('Build:  \033[96m{}\033[0m'.format(config['BUILD']))
 
 # Remove init file
 if os.path.isfile(init_file):
     os.remove(init_file)
-    os.remove(init_file + 'c')
 
 # Create build directory and sub-folders
 build_dir = os.path.join('build', config['BUILD'])
@@ -246,7 +253,7 @@ for index, target in enumerate(targets):
             print('\033[91mNo source files found matching pattern ({})*.{}\033[0m'.format(target['SRCDIR'], config['SRCEXT']))
             continue
 
-    if args.verbose:
+    if not args.quiet:
         print('Processing {} source files...'.format(len(src_files)))
 
     # Compile all files
@@ -400,7 +407,7 @@ for index, target in enumerate(targets):
             time_start = datetime.datetime.now()
             run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
             elapsed = datetime.datetime.now() - time_start
-            if args.verbose:
+            if not args.quiet:
                 print('\033[92mTime: {} seconds\033[0m'.format(elapsed.total_seconds()))
 
         # Run post-processing rule
