@@ -100,27 +100,27 @@ def run_command(command_str):
                         os.chdir(src_file)
                     elif param[0] == 'ok':
                         # Run external command, ignoring errors
-                        subprocess.call(src_file, shell=True)
+                        subprocess.call(param[1:], shell=True)
             else:
                 # External command
                 try:
                     ret = subprocess.call(command, shell=True)
                     if ret < 0:
                         print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
-                        quit()
+                        sys.exit(ret)
                     elif ret > 0:
                         print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
-                        quit()
+                        sys.exit(ret)
                 except OSError as e:
                     print('\033[91mCommand execution failed: {}\033[0m'.format(e))
-                    quit()
+                    sys.exit(1)
         # Restore working directory
         os.chdir(wd)
 
 
 # Main program
-mimk_version = '1.6'
-mimk_date = '2017-08-31'
+mimk_version = '1.7'
+mimk_date = '2017-09-10'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -166,7 +166,7 @@ try:
         config.update(config_module.config)
 except ImportError as e:
     print('\033[91mCould not load config file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.config), e))
-    quit()
+    sys.exit(1)
 try:
     target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
     targets = target_module.targets
@@ -174,7 +174,7 @@ try:
         config.update(target_module.config)
 except ImportError as e:
     print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
-    quit()
+    sys.exit(1)
 if not args.quiet:
     print('Build:  \033[96m{}\033[0m'.format(config['BUILD']))
 
@@ -301,7 +301,7 @@ for index, target in enumerate(targets):
             dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
             if dep_obj_path != obj:
                 print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
-                quit()
+                sys.exit(1)
 
             # Assume file is not modified unless one dependency file's hash is either missing or has changed
             modified = False
