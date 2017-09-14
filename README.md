@@ -20,7 +20,10 @@ Usage:
     -h, --help                  Show help message and exit
     -c CONFIG, --config CONFIG  Compiler configration file
     -r, --remove                Remove all dependency, object and executable files
+    -q, --quiet                 Quiet output
     -v, --verbose               Verbose output
+    -x [EXECUTE [EXECUTE ...]], --execute [EXECUTE [EXECUTE ...]]
+                                Execute specific target(s)
 ```
 
 ## Examples
@@ -120,6 +123,8 @@ Each target is defined by a dictionary with the following keys:
 
 Target-specific compiler configuration keys can be added to the target configuration file by defining the dictionary variable 'config'.
 The 'config' keys from the compiler configuration file can be overridden by defining the same key in the 'config' variable in the target configuration file.
+
+If the target configuration contains a variable 'template', its contents are used as a template for all targets. This is especially useful for target configuration files that have a 'targets' list with many targets.
 
 ### Source files
 If you want mimk to use all source files from one or multiple folders, define 'SRCDIR' as the path to those folders (mimk will then collect all files matching $SRCDIR/*.$SRCEXT).

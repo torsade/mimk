@@ -119,8 +119,8 @@ def run_command(command_str):
 
 
 # Main program
-mimk_version = '1.7'
-mimk_date = '2017-09-10'
+mimk_version = '1.8'
+mimk_date = '2017-09-14'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -128,6 +128,7 @@ parser.add_argument('-c', '--config', default='gcc_release', help='Compiler conf
 parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files')
 parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
+parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(s)')
 args = parser.parse_args()
 
 # Start message
@@ -156,6 +157,9 @@ config = {
     'OBJEXT':   'o'
 }
 
+# Set default template
+template = {}
+
 # Prevent *.pyc file creation
 sys.dont_write_bytecode=True
 
@@ -172,6 +176,8 @@ try:
     targets = target_module.targets
     if hasattr(target_module, 'config'):
         config.update(target_module.config)
+    if hasattr(target_module, 'template'):
+        template.update(target_module.template)
 except ImportError as e:
     print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
     sys.exit(1)
@@ -219,7 +225,17 @@ for index, target in enumerate(targets):
     if 'TARGET' not in target:
         print('\033[91mNo target defined in section #{} of file {}.py\033[0m'.format(str(index), args.target))
         continue
+
+    # Add definitions from template
+    target.update(template)
+
+    # Copy target name to config
     config['TARGET'] = target['TARGET']
+
+    # Execute only specific target(s)
+    if args.execute:
+        if target['TARGET'] not in args.execute:
+            continue
     print('Target: \033[92m{}\033[0m'.format(target['TARGET']))
 
     # Create target path and add to current config
