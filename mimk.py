@@ -119,12 +119,13 @@ def run_command(command_str):
 
 
 # Main program
-mimk_version = '1.8'
-mimk_date = '2017-09-14'
+mimk_version = '1.9'
+mimk_date = '2017-09-17'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
 parser.add_argument('-c', '--config', default='gcc_release', help='Compiler configuration file')
+parser.add_argument('-l', '--list', action='store_true', help='List targets')
 parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files')
 parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
@@ -174,6 +175,13 @@ except ImportError as e:
 try:
     target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
     targets = target_module.targets
+    target_dict = {}
+    for item in dir(target_module):
+        if not item.startswith('__'):
+            target_attr = getattr(target_module, item)
+            if isinstance(target_attr, dict):
+                if 'TARGET' in target_attr:
+                    target_dict[item] = target_attr['TARGET']
     if hasattr(target_module, 'config'):
         config.update(target_module.config)
     if hasattr(target_module, 'template'):
@@ -187,6 +195,21 @@ if not args.quiet:
 # Remove init file
 if os.path.isfile(init_file):
     os.remove(init_file)
+
+# List option
+if args.list:
+    for index, target in enumerate(targets):
+        if 'TARGET' in target:
+            print('\033[92m{}\033[0m'.format(target['TARGET']))
+    for target in target_dict:
+        print('\033[92m{}\033[0m'.format(target))
+    sys.exit(0)
+
+# Execute option, also support variable name
+if args.execute:
+    for index, execute in enumerate(args.execute):
+        if execute in target_dict:
+            args.execute.append(target_dict[execute])
 
 # Create build directory and sub-folders
 build_dir = os.path.join('build', config['BUILD'])
