@@ -119,8 +119,8 @@ def run_command(command_str):
 
 
 # Main program
-mimk_version = '1.9'
-mimk_date = '2017-09-17'
+mimk_version = '1.10'
+mimk_date = '2017-09-20'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -199,7 +199,7 @@ if os.path.isfile(init_file):
 # List option
 if args.list:
     for index, target in enumerate(targets):
-        if 'TARGET' in target:
+        if target['TARGET']:
             print('\033[92m{}\033[0m'.format(target['TARGET']))
     for target in target_dict:
         print('\033[92m{}\033[0m'.format(target))
@@ -250,7 +250,7 @@ for index, target in enumerate(targets):
         continue
 
     # Add definitions from template
-    target.update(template)
+    target = dict(template.items() + target.items())
 
     # Copy target name to config
     config['TARGET'] = target['TARGET']
@@ -270,7 +270,7 @@ for index, target in enumerate(targets):
     if 'SRCDIR' in target:
         config['SRCDIR'] = target['SRCDIR']
     if not args.remove:
-        if 'PRERULE' in target:
+        if target['PRERULE']:
             run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')))
 
     # Get source files list
@@ -325,7 +325,7 @@ for index, target in enumerate(targets):
         # Create dependency file if it does not exist
         dependencies = []
         if not os.path.exists(dep_path):
-            if 'DEPRULE' in target:
+            if target['DEPRULE']:
                 run_command(eval_rule(target['DEPRULE']))
 
         # Get list of dependencies
@@ -367,7 +367,7 @@ for index, target in enumerate(targets):
             modified_any = True
 
             # Compile source file
-            if 'SRCRULE' in target:
+            if target['SRCRULE']:
                 run_command(eval_rule(target['SRCRULE']))
 
             # Add dependencies' hashes to new dictionary
@@ -420,7 +420,7 @@ for index, target in enumerate(targets):
     else:
         # Create target file
         if modified or modified_any:
-            if 'OBJRULE' in target:
+            if target['OBJRULE']:
                 run_command(eval_rule(target['OBJRULE']))
 
             # Append hash of newly generated file to list
@@ -442,7 +442,7 @@ for index, target in enumerate(targets):
 
     # Run executable
     if not args.remove:
-        if 'EXERULE' in target:
+        if target['EXERULE']:
             time_start = datetime.datetime.now()
             run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
             elapsed = datetime.datetime.now() - time_start
@@ -450,7 +450,7 @@ for index, target in enumerate(targets):
                 print('\033[92mTime: {} seconds\033[0m'.format(elapsed.total_seconds()))
 
         # Run post-processing rule
-        if 'PSTRULE' in target:
+        if target['PSTRULE']:
             run_command(os.path.join(*eval_rule(target['PSTRULE']).split('/')))
 
 # End message
