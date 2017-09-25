@@ -60,41 +60,71 @@ def files_exist(file_list):
 
 
 # Issue command
-def run_command(command_str):
+def run_command(command_str, undo=False):
     if command_str:
         # Remember current working directory
         wd = os.getcwd()
         command_list = command_str.split(';');
         for command in command_list:
             if not args.quiet:
-                print('\033[96m{}\033[0m'.format(command))
+                print('\033[96m{}{}\033[0m'.format('Undo 'if undo else '', command))
             if command[0] == '@':
-                # Internal commands start with @
+                # Built-in commands start with @
                 param = command[1:].split(' ')
                 src_list = glob.glob(param[1]) if '*' in param[1] else [param[1]]
                 for src_file in src_list:
                     if param[0] == 'copy':
-                        # Copy file to dir/file
-                        shutil.copy2(src_file, param[2])
+                        if not undo:
+                            # Copy file to dir/file
+                            shutil.copy2(src_file, param[2])
+                        else:
+                            # Undo: delete copied file
+                            head, tail = os.path.split(src_file)
+                            copied_file = os.path.join(param[2], tail)
+                            if os.path.isfile(copied_file):
+                                os.remove(copied_file)
                     elif param[0] == 'move':
-                        # Move file to dir/file
-                        shutil.copy2(src_file, param[2])
-                        os.remove(src_file)
-                    elif param[0] == 'rename':
-                        # Rename file to file
-                        os.rename(src_file, param[2])
-                    elif param[0] == 'makedir':
-                        # Makedir
-                        makedir(src_file)
-                    elif param[0] == 'delete':
-                        # Delete dir/file
-                        if os.path.isdir(src_file):
-                            os.removedirs(src_file)
-                        elif os.path.isfile(src_file):
+                        if not undo:
+                            # Move file to dir/file
+                            shutil.copy2(src_file, param[2])
                             os.remove(src_file)
-                        elif not os.path.isfile(src_file):
-                            if os.path.isfile(src_file + '.exe'):
-                                os.remove(src_file + '.exe')
+                        else:
+                            # Undo: reverse move
+                            if os.path.isdir(param[2]):
+                                # todo
+                                head,tail = os.path.split(src_file)
+                            elif os.path.isfile(param[2]):
+                                shutil.copy2(param[2], src_file)
+                                os.remove(param[2])
+                            elif not os.path.isfile(param[2]):
+                                if os.path.isfile(param[2] + '.exe'):
+                                    shutil.copy2(param[2] + '.exe', src_file)
+                                    os.remove(param[2] + '.exe')
+                    elif param[0] == 'rename':
+                        if not undo:
+                            # Rename file to file
+                            os.rename(src_file, param[2])
+                        else:
+                            # Undo: reverse rename
+                            os.rename(param[2], src_file)
+                    elif param[0] == 'makedir':
+                        if not undo:
+                            # Makedir
+                            makedir(src_file)
+                        else:
+                            # Undo: remove dir
+                            if os.path.isdir(src_file):
+                                os.removedirs(src_file)
+                    elif param[0] == 'delete':
+                        if not undo:
+                            # Delete dir/file
+                            if os.path.isdir(src_file):
+                                os.removedirs(src_file)
+                            elif os.path.isfile(src_file):
+                                os.remove(src_file)
+                            elif not os.path.isfile(src_file):
+                                if os.path.isfile(src_file + '.exe'):
+                                    os.remove(src_file + '.exe')
                     elif param[0] == 'cd':
                         # Change directory
                         os.chdir(src_file)
@@ -119,8 +149,8 @@ def run_command(command_str):
 
 
 # Main program
-mimk_version = '1.10'
-mimk_date = '2017-09-20'
+mimk_version = '1.11'
+mimk_date = '2017-09-22'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -158,9 +188,6 @@ config = {
     'OBJEXT':   'o'
 }
 
-# Set default template
-template = {}
-
 # Prevent *.pyc file creation
 sys.dont_write_bytecode=True
 
@@ -184,8 +211,6 @@ try:
                     target_dict[item] = target_attr['TARGET']
     if hasattr(target_module, 'config'):
         config.update(target_module.config)
-    if hasattr(target_module, 'template'):
-        template.update(target_module.template)
 except ImportError as e:
     print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
     sys.exit(1)
@@ -249,9 +274,6 @@ for index, target in enumerate(targets):
         print('\033[91mNo target defined in section #{} of file {}.py\033[0m'.format(str(index), args.target))
         continue
 
-    # Add definitions from template
-    target = dict(template.items() + target.items())
-
     # Copy target name to config
     config['TARGET'] = target['TARGET']
 
@@ -270,7 +292,7 @@ for index, target in enumerate(targets):
     if 'SRCDIR' in target:
         config['SRCDIR'] = target['SRCDIR']
     if not args.remove:
-        if target['PRERULE']:
+        if 'PRERULE' in target and target['PRERULE']:
             run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')))
 
     # Get source files list
@@ -315,6 +337,10 @@ for index, target in enumerate(targets):
         if args.remove:
             remove(dep_path)
             remove(obj_path)
+            if 'REMRULE' in target and target['REMRULE']:
+                run_command(eval_rule(target['REMRULE']))
+            if 'PRERULE' in target and target['PRERULE']:
+                run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')), True)
             continue
 
         # Add paths to config
@@ -325,7 +351,7 @@ for index, target in enumerate(targets):
         # Create dependency file if it does not exist
         dependencies = []
         if not os.path.exists(dep_path):
-            if target['DEPRULE']:
+            if 'DEPRULE' in target and target['DEPRULE']:
                 run_command(eval_rule(target['DEPRULE']))
 
         # Get list of dependencies
@@ -367,7 +393,7 @@ for index, target in enumerate(targets):
             modified_any = True
 
             # Compile source file
-            if target['SRCRULE']:
+            if 'SRCRULE' in target and target['SRCRULE']:
                 run_command(eval_rule(target['SRCRULE']))
 
             # Add dependencies' hashes to new dictionary
@@ -420,7 +446,7 @@ for index, target in enumerate(targets):
     else:
         # Create target file
         if modified or modified_any:
-            if target['OBJRULE']:
+            if 'OBJRULE' in target and target['OBJRULE']:
                 run_command(eval_rule(target['OBJRULE']))
 
             # Append hash of newly generated file to list
@@ -442,7 +468,7 @@ for index, target in enumerate(targets):
 
     # Run executable
     if not args.remove:
-        if target['EXERULE']:
+        if 'EXERULE' in target and target['EXERULE']:
             time_start = datetime.datetime.now()
             run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
             elapsed = datetime.datetime.now() - time_start
@@ -450,7 +476,7 @@ for index, target in enumerate(targets):
                 print('\033[92mTime: {} seconds\033[0m'.format(elapsed.total_seconds()))
 
         # Run post-processing rule
-        if target['PSTRULE']:
+        if 'PSTRULE' in target and target['PSTRULE']:
             run_command(os.path.join(*eval_rule(target['PSTRULE']).split('/')))
 
 # End message
