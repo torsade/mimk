@@ -114,7 +114,7 @@ def run_command(command_str, undo=False):
                         else:
                             # Undo: remove dir
                             if os.path.isdir(src_file):
-                                os.removedirs(src_file)
+                                shutil.rmtree(src_file)
                     elif param[0] == 'delete':
                         if not undo:
                             # Delete dir/file
@@ -149,14 +149,14 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.11'
-mimk_date = '2017-09-22'
+mimk_version = '1.12'
+mimk_date = '2017-09-28'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
 parser.add_argument('-c', '--config', default='gcc_release', help='Compiler configuration file')
 parser.add_argument('-l', '--list', action='store_true', help='List targets')
-parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files')
+parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
 parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
 parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(s)')
@@ -354,39 +354,43 @@ for index, target in enumerate(targets):
             if 'DEPRULE' in target and target['DEPRULE']:
                 run_command(eval_rule(target['DEPRULE']))
 
+        # Firstly, assume file is modified
+        modified = True
+
         # Get list of dependencies
-        try:
-            dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, '\n\r').split(' '))
-            # Remove duplicates
-            dependencies = unique_list([d for d in dependencies if d != '/'])
-            # Strip trailing ':' from first entry
-            dependencies[0] = dependencies[0][:-1]
+        if 'DEPRULE' in target and target['DEPRULE']:
+            try:
+                dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, '\n\r').split(' '))
+                # Remove duplicates
+                dependencies = unique_list([d for d in dependencies if d != '/'])
+                # Strip trailing ':' from first entry
+                dependencies[0] = dependencies[0][:-1]
 
-            # Sanity check
-            dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
-            if dep_obj_path != obj:
-                print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
-                sys.exit(1)
+                # Sanity check
+                dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
+                if dep_obj_path != obj:
+                    print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
+                    sys.exit(1)
 
-            # Assume file is not modified unless one dependency file's hash is either missing or has changed
-            modified = False
+                # Assume file is not modified unless one dependency file's hash is either missing or has changed
+                modified = False
 
-            # Check for all dependencies, starting with second (first is resulting object file)
-            for dep_path in dependencies[1:]:
-                # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
-                hash = sha256file(dep_path)
+                # Check for all dependencies, starting with second (first is resulting object file)
+                for dep_path in dependencies[1:]:
+                    # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
+                    hash = sha256file(dep_path)
 
-                if dep_path in hash_dict:
-                    if hash_dict[dep_path] != hash:
-                        # Different hash, so file has been modified
+                    if dep_path in hash_dict:
+                        if hash_dict[dep_path] != hash:
+                            # Different hash, so file has been modified
+                            modified = True
+                            break
+                    else:
+                        # New file, mark as modified
                         modified = True
                         break
-                else:
-                    # New file, mark as modified
-                    modified = True
-                    break
-        except:
-            modified = True
+            except:
+                pass
 
         if modified:
             # Set modified_any flag
