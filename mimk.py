@@ -149,8 +149,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.12'
-mimk_date = '2017-09-28'
+mimk_version = '1.13'
+mimk_date = '2017-10-24'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -241,8 +241,10 @@ build_dir = os.path.join('build', config['BUILD'])
 config['BUILD_DIR'] = build_dir
 makedir(build_dir)
 dep_dir = os.path.join(build_dir, config['DEPPATH'])
+config['DEP_DIR'] = dep_dir
 makedir(dep_dir)
 obj_dir = os.path.join(build_dir, config['OBJPATH'])
+config['OBJ_DIR'] = obj_dir
 makedir(obj_dir)
 
 # Read hashes from file
@@ -289,6 +291,10 @@ for index, target in enumerate(targets):
     config['TARGET_PATH'] = target_path
 
     # Run pre-processing rule
+    base_offset = 0
+    if 'SRCBASE' in target:
+        config['SRCBASE'] = target['SRCBASE']
+        base_offset = len(target['SRCBASE']) + 1
     if 'SRCDIR' in target:
         config['SRCDIR'] = target['SRCDIR']
     if not args.remove:
@@ -307,6 +313,8 @@ for index, target in enumerate(targets):
         # Get list of all SRCEXT files from SRCDIR
         try:
             for src_dir in target['SRCDIR'].split(' '):
+                if 'SRCBASE' in target:
+                    src_dir = os.path.join(target['SRCBASE'], src_dir)
                 src_files.extend([os.path.join(src_dir, fn) for fn in os.listdir(src_dir) if fn.endswith('.' + config['SRCEXT'])])
         except Exception:
             pass
@@ -320,6 +328,7 @@ for index, target in enumerate(targets):
     # Compile all files
     new_hash_dict = {}
     obj_list = []
+    obj_list_rel = []
     modified_any = False
     for src_path in src_files:
         # Convert separators
@@ -331,7 +340,7 @@ for index, target in enumerate(targets):
         dep_path = os.path.join(dep_dir, dep)
         obj_path = os.path.join(obj_dir, obj)
         makedir(os.path.split(dep_path)[0])
-        makedir(os.path.split(obj_path)[0])
+        makedir(os.path.split(obj_path[base_offset:])[0])
 
         # Remove dependency and object files
         if args.remove:
@@ -407,9 +416,11 @@ for index, target in enumerate(targets):
 
         # After object file has been compiled, append it to list
         obj_list.append(obj_path)
+        obj_list_rel.append(obj[base_offset:])
 
     # Add object list to current config
     config['OBJ_LIST'] = ' '.join(obj_list)
+    config['OBJ_LIST_REL'] = ' '.join(obj_list_rel)
 
     # Assume file is not modified unless one dependency file's hash is either missing or has changed
     modified = False

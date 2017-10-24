@@ -81,14 +81,17 @@ Some keys are dynamically generated during runtime and can be used within rules.
 To distinguish them from user-provided keys, they all contain an underscore '_' in their name.
 The following keys are available:
 
-| Key           | Description                          | Generation                                      | Available |
-| ------------- | ------------------------------------ | ----------------------------------------------- | --------- |
-| 'BUILD_DIR'   | Build directory                      | 'build/' + compiler config name                 | Start     |
-| 'SRC_PATH'    | Source path                          | <src_files> or SRCDIR/*.SRCEXT                  | DEPRULE   |
-| 'DEP_PATH'    | Path to dependency file in build dir | BUILD_DIR/DEPPATH/SRCPATH with DEPEXT extension | DEPRULE   |
-| 'OBJ_PATH'    | Path to object file in build dir     | BUILD_DIR/OBJPATH/SRCPATH with OBJEXT extension | DEPRULE   |
-| 'TARGET_PATH' | Path to target file in build dir     | BUILD_DIR/TARGET                                | Start     |
-| 'OBJ_LIST'    | List of object files                 | List of all generated OBJ_PATH files            | OBJRULE   |
+| Key            | Description                          | Generation                                      | Available |
+| -------------- | ------------------------------------ | ----------------------------------------------- | --------- |
+| 'BUILD_DIR'    | Build directory                      | 'build/' + compiler config name                 | Start     |
+| 'DEP_DIR'      | Path to dependency dir in build dir  | BUILD_DIR/DEPPATH                               | Start     |
+| 'OBJ_DIR'      | Path to object dir in build dir      | BUILD_DIR/OBJPATH                               | Start     |
+| 'SRC_PATH'     | Source path                          | <src_files> or SRCDIR/*.SRCEXT                  | DEPRULE   |
+| 'DEP_PATH'     | Path to dependency file in build dir | BUILD_DIR/DEPPATH/SRCPATH with DEPEXT extension | DEPRULE   |
+| 'OBJ_PATH'     | Path to object file in build dir     | BUILD_DIR/OBJPATH/SRCPATH with OBJEXT extension | DEPRULE   |
+| 'TARGET_PATH'  | Path to target file in build dir     | BUILD_DIR/TARGET                                | Start     |
+| 'OBJ_LIST'     | List of object files                 | List of all generated OBJ_PATH files            | OBJRULE   |
+| 'OBJ_LIST_REL' | List of object files (relative path) | List of all generated OBJ_PATH files            | OBJRULE   |
 
 Please note that the key 'OBJ_LIST' holds a list of all generated object files.
 The purpose is to use it in the 'OBJRULE' step, namely for the linker.
@@ -114,6 +117,7 @@ Each target is defined by a dictionary with the following keys:
 | Key       | Description                                                        | Necessity |
 | --------- | ------------------------------------------------------------------ | --------- |
 | 'TARGET'  | Target filename                                                    | Required  |
+| 'SRCBASE' | Path to the base folder containing SRCDIR folder(s)                | Optional  |
 | 'SRCDIR'  | Path to folder(s) holding the source files                         | Optional  |
 | 'DEPENDS' | Additional dependencies not covered by DEPRULE                     | Optional  |
 | 'PRERULE' | Pre-processing rule                                                | Optional  |
