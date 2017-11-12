@@ -149,8 +149,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.13'
-mimk_date = '2017-10-24'
+mimk_version = '1.14'
+mimk_date = '2017-11-12'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -271,6 +271,16 @@ if args.verbose:
 
 # Process targets
 for index, target in enumerate(targets):
+    # If defined, target extensions override config extensions
+    if 'SRCEXT' in target:
+        config['SRCEXT'] = target['SRCEXT']
+    if 'INCEXT' in target:
+        config['INCEXT'] = target['INCEXT']
+    if 'DEPEXT' in target:
+        config['DEPEXT'] = target['DEPEXT']
+    if 'OBJEXT' in target:
+        config['OBJEXT'] = target['OBJEXT']
+
     # Check target
     if 'TARGET' not in target:
         print('\033[91mNo target defined in section #{} of file {}.py\033[0m'.format(str(index), args.target))

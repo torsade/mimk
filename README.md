@@ -130,6 +130,7 @@ Each target is defined by a dictionary with the following keys:
 
 Target-specific compiler configuration keys can be added to the target configuration file by defining the dictionary variable 'config'.
 The 'config' keys from the compiler configuration file can be overridden by defining the same key in the 'config' variable in the target configuration file.
+Further, the extension keys SRCEXT, INCEXT, DEPEXT, and OBJEXT can be defined in the target configuration and override the compiler configuration.
 
 ### Source files
 If you want mimk to use all source files from one or multiple folders, define 'SRCDIR' as the path to those folders (mimk will then collect all files matching $SRCDIR/*.$SRCEXT).
