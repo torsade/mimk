@@ -149,8 +149,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.14'
-mimk_date = '2017-11-12'
+mimk_version = '1.15'
+mimk_date = '2017-12-15'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -234,6 +234,10 @@ if args.list:
 if args.execute:
     for index, execute in enumerate(args.execute):
         if execute in target_dict:
+            target_attr = getattr(target_module, execute)
+            if isinstance(target_attr, dict):
+                if 'TARGET' in target_attr:
+                    targets.append(target_attr)
             args.execute.append(target_dict[execute])
 
 # Create build directory and sub-folders
