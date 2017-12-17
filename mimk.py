@@ -149,8 +149,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.16'
-mimk_date = '2017-12-15'
+mimk_version = '1.17'
+mimk_date = '2017-12-17'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -384,11 +384,9 @@ for index, target in enumerate(targets):
         # Get list of dependencies
         if 'DEPRULE' in target and target['DEPRULE']:
             try:
-                dependencies = filter(None, open(dep_path, 'r').read().replace('\\', '/').translate(None, '\n\r').split(' '))
+                dependencies = filter(None, open(dep_path, 'r').read().replace(':', '').replace('\\', '/').translate(None, '\n\r').split(' '))
                 # Remove duplicates
                 dependencies = unique_list([d for d in dependencies if d != '/'])
-                # Strip trailing ':' from first entry
-                dependencies[0] = dependencies[0][:-1]
 
                 # Sanity check
                 dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
