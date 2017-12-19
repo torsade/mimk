@@ -384,7 +384,7 @@ for index, target in enumerate(targets):
         # Get list of dependencies
         if 'DEPRULE' in target and target['DEPRULE']:
             try:
-                dependencies = filter(None, open(dep_path, 'r').read().replace(':', '').replace('\\', '/').translate(None, '\n\r').split(' '))
+                dependencies = filter(None, open(dep_path, 'r').read().replace(': ', ' ').replace('\\', '/').translate(None, '\n\r').split(' '))
                 # Remove duplicates
                 dependencies = unique_list([d for d in dependencies if d != '/'])
 
