@@ -241,7 +241,7 @@ if args.execute:
                 if 'TARGET' in target_attr:
                     if not any(target['TARGET'] == target_attr['TARGET'] for target in targets):
                         targets.append(target_attr)
-    args.execute.append(new_execute_list)
+    args.execute.extend(new_execute_list)
 
 # Create build directory and sub-folders
 build_dir = os.path.join('build', config['BUILD'])
