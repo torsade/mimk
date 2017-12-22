@@ -149,8 +149,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.17'
-mimk_date = '2017-12-17'
+mimk_version = '1.18'
+mimk_date = '2017-12-22'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -232,14 +232,16 @@ if args.list:
 
 # Execute option, also support variable name
 if args.execute:
+    new_execute_list = []
     for index, execute in enumerate(args.execute):
         if execute in target_dict:
-            args.execute.append(target_dict[execute])
+            new_execute_list.append(target_dict[execute])
             target_attr = getattr(target_module, execute)
             if isinstance(target_attr, dict):
                 if 'TARGET' in target_attr:
                     if not any(target['TARGET'] == target_attr['TARGET'] for target in targets):
                         targets.append(target_attr)
+    args.execute.append(new_execute_list)
 
 # Create build directory and sub-folders
 build_dir = os.path.join('build', config['BUILD'])
