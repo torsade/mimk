@@ -131,6 +131,9 @@ def run_command(command_str, undo=False):
                     elif param[0] == 'ok':
                         # Run external command, ignoring errors
                         subprocess.call(param[1:], shell=True)
+                    elif param[0] == 'python':
+                        # Run python code
+                        exec(' '.join(param[1:]))
             else:
                 # External command
                 try:
@@ -149,11 +152,12 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.18'
-mimk_date = '2017-12-22'
+mimk_version = '1.19'
+mimk_date = '2018-02-13'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
+parser.add_argument('-a', '--arg', nargs='*', help='Add argument(s)')
 parser.add_argument('-c', '--config', default='gcc_release', help='Compiler configuration file')
 parser.add_argument('-l', '--list', action='store_true', help='List targets')
 parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
@@ -223,7 +227,7 @@ if os.path.isfile(init_file):
 
 # List option
 if args.list:
-    for index, target in enumerate(targets):
+    for target in targets:
         if target['TARGET']:
             print('\033[92m{}\033[0m'.format(target['TARGET']))
     for target in target_dict:
@@ -233,7 +237,7 @@ if args.list:
 # Execute option, also support variable name
 if args.execute:
     new_execute_list = []
-    for index, execute in enumerate(args.execute):
+    for execute in args.execute:
         if execute in target_dict:
             new_execute_list.append(target_dict[execute])
             target_attr = getattr(target_module, execute)
@@ -292,6 +296,12 @@ for index, target in enumerate(targets):
     if 'TARGET' not in target:
         print('\033[91mNo target defined in section #{} of file {}.py\033[0m'.format(str(index), args.target))
         continue
+
+    # Arg option
+    arg = []
+    if args.arg:
+        arg = args.arg
+    config['ARGS'] = ' '.join(arg)
 
     # Copy target name to config
     config['TARGET'] = target['TARGET']

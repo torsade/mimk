@@ -18,6 +18,8 @@ Usage:
     python mimk.py [-h] [-c CONFIG] [-r] [-v] target
     target                      Target configuration file
     -h, --help                  Show help message and exit
+    -a [ARG [ARG ...]], --arg [ARG [ARG ...]]
+                                Add argument(s)
     -c CONFIG, --config CONFIG  Compiler configration file
     -l, --list                  List targets
     -r, --remove                Remove all dependency, object and executable files and
@@ -45,6 +47,11 @@ Be verbose:
 ```
     python mimk.py -v all
 ```
+Pass arguments to executable (can be used as $ARGS variable in EXERULE):
+```
+    python mimk.py helloworld arg1 arg2
+```
+
 
 # Configuration
 Mimk requires one (optional) compiler configuration file and one (mandatory) target configuration file.
@@ -155,6 +162,7 @@ Wildcards ('*') are supported.
 | 'delete'  | Delete file or directory              | dir/file          |
 | 'cd'      | Change directory                      | dir               |
 | 'ok'      | Run external command, ignoring errors | external command  |
+| 'python'  | Run Python script                     | Python commands   |
 
 #### Pre-processing rule
 This rule can be used to perform pre-processing steps, e.g. copying files to $SRCDIR.
