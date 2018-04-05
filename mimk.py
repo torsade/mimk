@@ -23,9 +23,12 @@ def sha256file(filename, ext=''):
     hash_sha256 = hashlib.sha256()
     if not os.path.isfile(filename):
         filename = filename + ext
-    with open(filename, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            hash_sha256.update(chunk)
+    try:
+        with open(filename, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b''):
+                hash_sha256.update(chunk)
+    except EnvironmentError:
+        return -1
     return hash_sha256.hexdigest()
 
 
@@ -152,8 +155,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.19'
-mimk_date = '2018-02-13'
+mimk_version = '1.20'
+mimk_date = '2018-04-05'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -437,7 +440,9 @@ for index, target in enumerate(targets):
             # Add dependencies' hashes to new dictionary
             if dependencies:
                 for dep_path in dependencies[1:]:
-                    new_hash_dict[dep_path] = sha256file(dep_path)
+                    hash = sha256file(dep_path)
+                    if hash != -1:
+                        new_hash_dict[dep_path] = hash
 
         # After object file has been compiled, append it to list
         obj_list.append(obj_path)
@@ -457,7 +462,9 @@ for index, target in enumerate(targets):
         for dep in depends:
             try:
                 hash = sha256file(dep, '.exe')
-                if dep in hash_dict:
+                if hash == -1:
+                    hash_dict.pop(dep, None)
+                elif dep in hash_dict:
                     if hash_dict[dep] != hash:
                         modified = True
                         new_hash_dict[dep] = hash
@@ -492,7 +499,8 @@ for index, target in enumerate(targets):
             # Append hash of newly generated file to list
             try:
                 hash = sha256file(target_path, '.exe')
-                hash_dict[target_path_dict] = hash
+                if hash != -1:
+                    hash_dict[target_path_dict] = hash
             except Exception:
                 pass
 
