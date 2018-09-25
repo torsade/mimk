@@ -20,6 +20,7 @@ Usage:
     -h, --help                  Show help message and exit
     -a [ARG [ARG ...]], --arg [ARG [ARG ...]]
                                 Add argument(s)
+    -d, --debug                 Debug mode, do not stop on errors
     -c CONFIG, --config CONFIG  Compiler configration file
     -l, --list                  List targets
     -r, --remove                Remove all dependency, object and executable files and

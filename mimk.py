@@ -141,12 +141,13 @@ def run_command(command_str, undo=False):
                 # External command
                 try:
                     ret = subprocess.call(command, shell=True)
-                    if ret < 0:
-                        print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
-                        sys.exit(ret)
-                    elif ret > 0:
-                        print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
-                        sys.exit(ret)
+                    if not args.debug:
+                        if ret < 0:
+                            print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
+                            sys.exit(ret)
+                        elif ret > 0:
+                            print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
+                            sys.exit(ret)
                 except OSError as e:
                     print('\033[91mCommand execution failed: {}\033[0m'.format(e))
                     sys.exit(1)
@@ -155,13 +156,14 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.20'
-mimk_date = '2018-04-05'
+mimk_version = '1.21'
+mimk_date = '2018-09-25'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
 parser.add_argument('-a', '--arg', nargs='*', help='Add argument(s)')
 parser.add_argument('-c', '--config', default='gcc_release', help='Compiler configuration file')
+parser.add_argument('-d', '--debug', action='store_true', help='Debug mode, do not stop on errors')
 parser.add_argument('-l', '--list', action='store_true', help='List targets')
 parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
 parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
