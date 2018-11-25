@@ -27,6 +27,7 @@ Usage:
                                 undo pre-processing rule
     -q, --quiet                 Quiet output
     -v, --verbose               Verbose output
+    -w, --wipe                  Wipe database before build
     -x [EXECUTE [EXECUTE ...]], --execute [EXECUTE [EXECUTE ...]]
                                 Execute specific target(s)
 ```

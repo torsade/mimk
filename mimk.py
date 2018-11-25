@@ -156,8 +156,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.21'
-mimk_date = '2018-09-25'
+mimk_version = '1.22'
+mimk_date = '2018-11-26'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -168,6 +168,7 @@ parser.add_argument('-l', '--list', action='store_true', help='List targets')
 parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
 parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
+parser.add_argument('-w', '--wipe', action='store_true', help='Wipe build database')
 parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(s)')
 args = parser.parse_args()
 
@@ -252,23 +253,36 @@ if args.execute:
                         targets.append(target_attr)
     args.execute.extend(new_execute_list)
 
-# Create build directory and sub-folders
+# Build dir paths
 build_dir = os.path.join('build', config['BUILD'])
+hashes_file = '.hashes.json'
+hashes_path = os.path.join(build_dir, hashes_file)
+dep_dir = os.path.join(build_dir, config['DEPPATH'])
+obj_dir = os.path.join(build_dir, config['OBJPATH'])
+
+# Wipe build database
+if args.wipe:
+    try:
+        os.remove(hashes_path)
+        shutil.rmtree(build_dir)
+        shutil.rmtree(obj_dir)
+    except Exception:
+        pass
+
+# Create build directory and sub-folders
 config['BUILD_DIR'] = build_dir
 makedir(build_dir)
-dep_dir = os.path.join(build_dir, config['DEPPATH'])
 config['DEP_DIR'] = dep_dir
 makedir(dep_dir)
-obj_dir = os.path.join(build_dir, config['OBJPATH'])
 config['OBJ_DIR'] = obj_dir
 makedir(obj_dir)
 
 # Read hashes from file
-hashes_file = '.hashes.json'
 try:
-    hash_dict = json.load(open(os.path.join(build_dir, hashes_file), 'r'))
+    hash_dict = json.load(open(hashes_path, 'r'))
 except Exception:
     hash_dict = {}
+
 
 # Print statistics
 if args.verbose:
