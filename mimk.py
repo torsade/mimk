@@ -94,8 +94,10 @@ def run_command(command_str, undo=False):
                         else:
                             # Undo: reverse move
                             if os.path.isdir(param[2]):
-                                # todo
-                                head,tail = os.path.split(src_file)
+                                head, tail = os.path.split(src_file)
+                                moved_file = os.path.join(param[2], tail)
+                                shutil.copy2(moved_file, head)
+                                os.remove(moved_file)
                             elif os.path.isfile(param[2]):
                                 shutil.copy2(param[2], src_file)
                                 os.remove(param[2])
@@ -132,11 +134,13 @@ def run_command(command_str, undo=False):
                         # Change directory
                         os.chdir(src_file)
                     elif param[0] == 'ok':
-                        # Run external command, ignoring errors
-                        subprocess.call(param[1:], shell=True)
+                        if not undo:
+                            # Run external command, ignoring errors
+                            subprocess.call(param[1:], shell=True)
                     elif param[0] == 'python':
-                        # Run python code
-                        exec(' '.join(param[1:]))
+                        if not undo:
+                            # Run python code
+                            exec(' '.join(param[1:]))
             else:
                 # External command
                 try:
@@ -156,8 +160,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.22'
-mimk_date = '2018-11-26'
+mimk_version = '1.23'
+mimk_date = '2019-02-27'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
