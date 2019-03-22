@@ -160,8 +160,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.23'
-mimk_date = '2019-02-27'
+mimk_version = '1.24'
+mimk_date = '2019-03-22'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -262,31 +262,26 @@ build_dir = os.path.join('build', config['BUILD'])
 hashes_file = '.hashes.json'
 hashes_path = os.path.join(build_dir, hashes_file)
 dep_dir = os.path.join(build_dir, config['DEPPATH'])
-obj_dir = os.path.join(build_dir, config['OBJPATH'])
 
 # Wipe build database
 if args.wipe:
     try:
         os.remove(hashes_path)
         shutil.rmtree(build_dir)
-        shutil.rmtree(obj_dir)
     except Exception:
         pass
 
-# Create build directory and sub-folders
+# Create build directory and dep sub-folder
 config['BUILD_DIR'] = build_dir
 makedir(build_dir)
 config['DEP_DIR'] = dep_dir
 makedir(dep_dir)
-config['OBJ_DIR'] = obj_dir
-makedir(obj_dir)
 
 # Read hashes from file
 try:
     hash_dict = json.load(open(hashes_path, 'r'))
 except Exception:
     hash_dict = {}
-
 
 # Print statistics
 if args.verbose:
@@ -314,6 +309,22 @@ for index, target in enumerate(targets):
         config['DEPEXT'] = target['DEPEXT']
     if 'OBJEXT' in target:
         config['OBJEXT'] = target['OBJEXT']
+    if 'OBJPATH' in target:
+        config['OBJPATH'] = target['OBJPATH']
+
+    # Obj paths
+    obj_dir = os.path.join(build_dir, config['OBJPATH'])
+
+    # Wipe object folder
+    if args.wipe:
+        try:
+            shutil.rmtree(obj_dir)
+        except Exception:
+            pass
+
+    # Create obj sub-folders
+    config['OBJ_DIR'] = obj_dir
+    makedir(obj_dir)
 
     # Check target
     if 'TARGET' not in target:
@@ -448,6 +459,10 @@ for index, target in enumerate(targets):
                         break
             except:
                 pass
+
+        # Check if object file exists
+        if not os.path.exists(obj_path):
+            modified = True
 
         if modified:
             # Set modified_any flag
