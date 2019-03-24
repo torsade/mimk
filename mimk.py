@@ -22,7 +22,7 @@ def unique_list(list):
 def sha256file(filename, ext=''):
     hash_sha256 = hashlib.sha256()
     if not os.path.isfile(filename):
-        filename = filename + ext
+        filename += ext
     try:
         with open(filename, 'rb') as f:
             for chunk in iter(lambda: f.read(4096), b''):
@@ -49,7 +49,7 @@ def remove(filename, ext=''):
     if not args.quiet:
         print('\033[95mRemove {}\033[0m'.format(filename))
     if not os.path.isfile(filename):
-        filename = filename + ext
+        filename += ext
     if os.path.isfile(filename):
         os.remove(filename)
 
@@ -160,8 +160,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.24'
-mimk_date = '2019-03-22'
+mimk_version = '1.25'
+mimk_date = '2019-03-24'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -228,6 +228,8 @@ try:
 except ImportError as e:
     print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
     sys.exit(1)
+std_dep_path = config['DEPPATH']
+std_obj_path = config['OBJPATH']
 if not args.quiet:
     print('Build:  \033[96m{}\033[0m'.format(config['BUILD']))
 
@@ -261,7 +263,6 @@ if args.execute:
 build_dir = os.path.join('build', config['BUILD'])
 hashes_file = '.hashes.json'
 hashes_path = os.path.join(build_dir, hashes_file)
-dep_dir = os.path.join(build_dir, config['DEPPATH'])
 
 # Wipe build database
 if args.wipe:
@@ -271,11 +272,9 @@ if args.wipe:
     except Exception:
         pass
 
-# Create build directory and dep sub-folder
+# Create build directory
 config['BUILD_DIR'] = build_dir
 makedir(build_dir)
-config['DEP_DIR'] = dep_dir
-makedir(dep_dir)
 
 # Read hashes from file
 try:
@@ -309,10 +308,11 @@ for index, target in enumerate(targets):
         config['DEPEXT'] = target['DEPEXT']
     if 'OBJEXT' in target:
         config['OBJEXT'] = target['OBJEXT']
-    if 'OBJPATH' in target:
-        config['OBJPATH'] = target['OBJPATH']
+    config['DEPPATH'] = target['DEPPATH'] if 'DEPPATH' in target else std_dep_path
+    config['OBJPATH'] = target['OBJPATH'] if 'OBJPATH' in target else std_obj_path
 
-    # Obj paths
+    # Dep and obj sub-folders
+    dep_dir = os.path.join(build_dir, config['DEPPATH'])
     obj_dir = os.path.join(build_dir, config['OBJPATH'])
 
     # Wipe object folder
@@ -322,7 +322,9 @@ for index, target in enumerate(targets):
         except Exception:
             pass
 
-    # Create obj sub-folders
+    # Create dep and obj sub-folders
+    config['DEP_DIR'] = dep_dir
+    makedir(dep_dir)
     config['OBJ_DIR'] = obj_dir
     makedir(obj_dir)
 
