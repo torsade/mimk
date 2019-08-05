@@ -15,7 +15,7 @@ Mimk (short for **minimal make**) is a small build automation system written in 
 Mimk consists of just one Python script file 'mimk.py'.
 Usage:
 ```
-    python mimk.py [-h] [-c CONFIG] [-r] [-v] target
+    python mimk.py [-h] [-a ARG] [-c CONFIG] [-r] [-q] [-v] [-w] [-x EXECUTE] target
     target                      Target configuration file
     -h, --help                  Show help message and exit
     -a [ARG [ARG ...]], --arg [ARG [ARG ...]]
