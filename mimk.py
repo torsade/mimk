@@ -160,8 +160,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.26'
-mimk_date = '2019-08-06'
+mimk_version = '1.27'
+mimk_date = '2019-09-10'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -257,6 +257,9 @@ if args.execute:
                 if 'TARGET' in target_attr:
                     if not any(target['TARGET'] == target_attr['TARGET'] for target in targets):
                         targets.append(target_attr)
+        else:
+            print('\033[91mCould not find target {} to execute\033[0m'.format(execute))
+            sys.exit(1)
     args.execute = new_execute_list
 
 # Build dir paths
@@ -265,7 +268,7 @@ hashes_file = '.hashes.json'
 hashes_path = os.path.join(build_dir, hashes_file)
 
 # Wipe build database
-if args.wipe and os.path.isdir(build_path):
+if args.wipe and os.path.isdir(build_dir):
     try:
         os.remove(hashes_path)
         shutil.rmtree(build_dir)
@@ -316,7 +319,7 @@ for index, target in enumerate(targets):
     obj_dir = os.path.join(build_dir, config['OBJPATH'])
 
     # Wipe object folder
-    if args.wipe and os.path.isdir(obj_path):
+    if args.wipe and os.path.isdir(obj_dir):
         try:
             shutil.rmtree(obj_dir)
         except Exception:
