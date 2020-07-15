@@ -130,6 +130,24 @@ def run_command(command_str, undo=False):
                             elif not os.path.isfile(src_file):
                                 if os.path.isfile(src_file + '.exe'):
                                     os.remove(src_file + '.exe')
+                    elif param[0] == 'echo':
+                        if not undo:
+                            # Echo parameters into file
+                            with open(param[1], 'w') as echo_file:
+                                echo_file.write(' '.join(param[2:]))
+                        else:
+                            if os.path.isfile(param[1]):
+                                os.remove(param[1])
+                    elif param[0] == 'cat':
+                        if not undo:
+                            # Concatenate multiple files into one
+                            with open(param[1], 'w') as cat_file:
+                                for file in param[2:]:
+                                    with open(file) as infile:
+                                        cat_file.write(infile.read())
+                        else:
+                            if os.path.isfile(param[1]):
+                                os.remove(param[1])
                     elif param[0] == 'cd':
                         # Change directory
                         os.chdir(src_file)
@@ -137,6 +155,11 @@ def run_command(command_str, undo=False):
                         if not undo:
                             # Run external command, ignoring errors
                             subprocess.call(param[1:], shell=True)
+                    elif param[0] == 'exists':
+                        if not undo:
+                            # Run external command if path exists, ignoring errors
+                            if os.path.exists(param[1]):
+                                subprocess.call(param[2:], shell=True)
                     elif param[0] == 'python':
                         if not undo:
                             # Run python code
@@ -160,8 +183,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.27'
-mimk_date = '2019-09-10'
+mimk_version = '1.28'
+mimk_date = '2020-07-16'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
