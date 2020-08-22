@@ -183,8 +183,8 @@ def run_command(command_str, undo=False):
 
 
 # Main program
-mimk_version = '1.28'
-mimk_date = '2020-07-16'
+mimk_version = '1.29'
+mimk_date = '2020-08-22'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -192,8 +192,9 @@ parser.add_argument('-a', '--arg', nargs='*', help='Add argument(s)')
 parser.add_argument('-c', '--config', default='gcc_release', help='Compiler configuration file')
 parser.add_argument('-d', '--debug', action='store_true', help='Debug mode, do not stop on errors')
 parser.add_argument('-l', '--list', action='store_true', help='List targets')
-parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
 parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
+parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
+parser.add_argument('-s', '--source', nargs='*', help='Source folder(s), overrides SRCDIR')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
 parser.add_argument('-w', '--wipe', action='store_true', help='Wipe build database')
 parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(s)')
@@ -379,13 +380,18 @@ for index, target in enumerate(targets):
     target_path_dict = build_dir + '/' + target['TARGET']
     config['TARGET_PATH'] = target_path
 
-    # Run pre-processing rule
+    # Source folder
     base_offset = 0
     if 'SRCBASE' in target:
         config['SRCBASE'] = target['SRCBASE']
         base_offset = len(target['SRCBASE']) + 1
     if 'SRCDIR' in target:
         config['SRCDIR'] = target['SRCDIR']
+    if args.source:
+        target['SRCDIR'] = ' '.join(args.source)
+        config['SRCDIR'] = target['SRCDIR']
+
+    # Run pre-processing rule
     if not args.remove:
         if 'PRERULE' in target and target['PRERULE']:
             run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')))
