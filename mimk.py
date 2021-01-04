@@ -11,6 +11,15 @@ import string
 import subprocess
 import sys
 
+color = {
+    'reset': '\033[0m',
+    'red': '\033[91m',
+    'green': '\033[92m',
+    'yellow': '\033[93m',
+    'blue': '\033[94m',
+    'magenta': '\033[95m',
+    'cyan': '\033[96m',
+}
 
 # Remove duplicates from list
 def unique_list(list):
@@ -47,7 +56,7 @@ def makedir(pathname):
 # Remove file
 def remove(filename, ext=''):
     if not args.quiet:
-        print('\033[95mRemove {}\033[0m'.format(filename))
+        print(color['magenta'] + 'Remove {}'.format(filename) + color['reset'])
     if not os.path.isfile(filename):
         filename += ext
     if os.path.isfile(filename):
@@ -70,7 +79,7 @@ def run_command(command_str, undo=False):
         command_list = command_str.split(';');
         for command in command_list:
             if not args.quiet:
-                print('\033[96m{}{}\033[0m'.format('Undo 'if undo else '', command))
+                print(color['cyan'] + '{}{}'.format('Undo 'if undo else '', command) + color['reset'])
             if command[0] == '@':
                 # Built-in commands start with @
                 param = command[1:].split(' ')
@@ -170,21 +179,22 @@ def run_command(command_str, undo=False):
                     ret = subprocess.call(command, shell=True)
                     if not args.debug:
                         if ret < 0:
-                            print('\033[91mCommand {} terminated by signal {}\033[0m'.format(command.split(' ')[0], -ret))
+                            print(color['red'] + 'Command {} terminated by signal {}'.format(command.split(' ')[0], -ret) + color['reset'])
                             sys.exit(ret)
                         elif ret > 0:
-                            print('\033[91mCommand {} returned error {}\033[0m'.format(command.split(' ')[0], ret))
+                            print(color['red'] + 'Command {} returned error {}'.format(command.split(' ')[0], ret) + color['reset'])
                             sys.exit(ret)
                 except OSError as e:
-                    print('\033[91mCommand execution failed: {}\033[0m'.format(e))
+                    print(color['red'] + 'Command execution failed: {}'.format(e) + color['reset'])
                     sys.exit(1)
         # Restore working directory
         os.chdir(wd)
 
 
 # Main program
-mimk_version = '1.29'
-mimk_date = '2020-08-22'
+total_time_start = datetime.datetime.now()
+mimk_version = '1.30'
+mimk_date = '2021-01-04'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -201,7 +211,7 @@ parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(
 args = parser.parse_args()
 
 # Start message
-print('\033[93mmimk - Minimal make v{} ({})\033[0m'.format(mimk_version, mimk_date))
+print(color['yellow'] + 'mimk - Minimal make v{} ({})'.format(mimk_version, mimk_date) + color['reset'])
 
 # Set config path
 config_dir = 'mimk'
@@ -235,7 +245,7 @@ try:
     if hasattr(config_module, 'config'):
         config.update(config_module.config)
 except ImportError as e:
-    print('\033[91mCould not load config file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.config), e))
+    print(color['red'] + 'Could not load config file {}.py: {}'.format(os.path.join(config_dir, args.config), e) + color['reset'])
     sys.exit(1)
 try:
     target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
@@ -250,12 +260,12 @@ try:
     if hasattr(target_module, 'config'):
         config.update(target_module.config)
 except ImportError as e:
-    print('\033[91mCould not load target file {}.py: {}\033[0m'.format(os.path.join(config_dir, args.target), e))
+    print(color['red'] + 'Could not load target file {}.py: {}'.format(os.path.join(config_dir, args.target), e) + color['reset'])
     sys.exit(1)
 std_dep_path = config['DEPPATH']
 std_obj_path = config['OBJPATH']
 if not args.quiet:
-    print('Build:  \033[96m{}\033[0m'.format(config['BUILD']))
+    print('Build:  ' + color['cyan'] + '{}'.format(config['BUILD']) + color['reset'])
 
 # Remove init file
 if os.path.isfile(init_file):
@@ -265,9 +275,9 @@ if os.path.isfile(init_file):
 if args.list:
     for target in targets:
         if target['TARGET']:
-            print('\033[92m{}\033[0m'.format(target['TARGET']))
+            print(color['green'] + '{}'.format(target['TARGET']) + color['reset'])
     for target in target_dict:
-        print('\033[92m{}\033[0m'.format(target))
+        print(color['green'] + '{}'.format(target) + color['reset'])
     sys.exit(0)
 
 # Execute option, also support variable name
@@ -282,7 +292,7 @@ if args.execute:
                     if not any(target['TARGET'] == target_attr['TARGET'] for target in targets):
                         targets.append(target_attr)
         else:
-            print('\033[91mCould not find target {} to execute\033[0m'.format(execute))
+            print(color['red'] + 'Could not find target {} to execute'.format(execute) + color['reset'])
             sys.exit(1)
     args.execute = new_execute_list
 
@@ -357,7 +367,7 @@ for index, target in enumerate(targets):
 
     # Check target
     if 'TARGET' not in target:
-        print('\033[91mNo target defined in section #{} of file {}.py\033[0m'.format(str(index), args.target))
+        print(color['red'] + 'No target defined in section #{} of file {}.py'.format(str(index), args.target) + color['reset'])
         continue
 
     # Arg option
@@ -373,7 +383,7 @@ for index, target in enumerate(targets):
     if args.execute:
         if target['TARGET'] not in args.execute:
             continue
-    print('Target: \033[92m{}\033[0m'.format(target['TARGET']))
+    print('Target: ' + color['green'] + '{}'.format(target['TARGET']) + color['reset'])
 
     # Create target path and add to current config
     target_path = os.path.join(build_dir, target['TARGET'])
@@ -402,7 +412,7 @@ for index, target in enumerate(targets):
         # Get list of source files from target configuration
         src_files = target_module.src_files
         if not files_exist(src_files):
-            print('\033[91mAt least one source file could not be found: {}\033[0m'.format(src_files))
+            print(color['red'] + 'At least one source file could not be found: {}'.format(src_files) + color['reset'])
             continue
     elif 'SRCDIR' in target:
         # Get list of all SRCEXT files from SRCDIR
@@ -414,7 +424,7 @@ for index, target in enumerate(targets):
         except Exception:
             pass
         if not src_files:
-            print('\033[91mNo source files found matching pattern ({})*.{}\033[0m'.format(target['SRCDIR'], config['SRCEXT']))
+            print(color['red'] + 'No source files found matching pattern ({})*.{}'.format(target['SRCDIR'], config['SRCEXT']) + color['reset'])
             continue
 
     if not args.quiet:
@@ -437,7 +447,7 @@ for index, target in enumerate(targets):
         makedir(os.path.split(dep_path)[0])
         makedir(os.path.split(obj_path[base_offset:])[0])
 
-        # Remove dependency and object files
+        # Remove dependency and object files if remove flag is set
         if args.remove:
             remove(dep_path)
             remove(obj_path)
@@ -464,14 +474,12 @@ for index, target in enumerate(targets):
         # Get list of dependencies
         if 'DEPRULE' in target and target['DEPRULE']:
             try:
-                dependencies = filter(None, open(dep_path, 'r').read().replace(': ', ' ').replace('\\', '/').translate(None, '\n\r').split(' '))
-                # Remove duplicates
-                dependencies = unique_list([d for d in dependencies if d != '/'])
+                dependencies = unique_list(filter(None, open(dep_path, 'r').read().replace(': ', ' ').replace(' \\', '').replace('\\', '/').replace('\n', '').replace('\r', '').split(' ')))
 
                 # Sanity check
                 dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
                 if dep_obj_path != obj:
-                    print('\033[91mError: mismatch in dependency file {}: Expected {}, got {}\033[0m'.format(dep_path, obj, dep_obj_path))
+                    print(color['red'] + 'Error: mismatch in dependency file {}: Expected {}, got {}'.format(dep_path, obj, dep_obj_path) + color['reset'])
                     sys.exit(1)
 
                 # Assume file is not modified unless one dependency file's hash is either missing or has changed
@@ -590,11 +598,14 @@ for index, target in enumerate(targets):
             run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
             elapsed = datetime.datetime.now() - time_start
             if not args.quiet:
-                print('\033[92mTime: {} seconds\033[0m'.format(elapsed.total_seconds()))
+                print(color['green'] + 'Execution time: {:.2f} seconds'.format(elapsed.total_seconds()) + color['reset'])
 
         # Run post-processing rule
         if 'PSTRULE' in target and target['PSTRULE']:
             run_command(os.path.join(*eval_rule(target['PSTRULE']).split('/')))
 
 # End message
-print('\033[93mDone.\033[0m')
+if not args.quiet:
+    total_elapsed = datetime.datetime.now() - total_time_start
+    print(color['green'] + 'Total time:     {:.2f} seconds'.format(total_elapsed.total_seconds()) + color['reset'])
+print(color['yellow'] + 'Done.' + color['reset'])
