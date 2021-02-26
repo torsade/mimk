@@ -11,15 +11,18 @@ import string
 import subprocess
 import sys
 
-color = {
-    'reset': '\033[0m',
-    'red': '\033[91m',
-    'green': '\033[92m',
-    'yellow': '\033[93m',
-    'blue': '\033[94m',
-    'magenta': '\033[95m',
-    'cyan': '\033[96m',
-}
+# Color printing
+def color_print(str, col='red', pre=''):
+    color = {
+        'reset': '\033[0m',
+        'red': '\033[91m',
+        'green': '\033[92m',
+        'yellow': '\033[93m',
+        'blue': '\033[94m',
+        'magenta': '\033[95m',
+        'cyan': '\033[96m'
+    }
+    print(pre + color[col] + str + color['reset'])
 
 # Remove duplicates from list
 def unique_list(list):
@@ -40,28 +43,24 @@ def sha256file(filename, ext=''):
         return -1
     return hash_sha256.hexdigest()
 
-
 # Evaluate rule by replacing variables
 def eval_rule(rule_str):
     if rule_str:
         return string.Template(rule_str).safe_substitute(config)
-
 
 # Make directory
 def makedir(pathname):
     if not os.path.exists(pathname):
         os.makedirs(pathname)
 
-
 # Remove file
 def remove(filename, ext=''):
     if not args.quiet:
-        print(color['magenta'] + 'Remove {}'.format(filename) + color['reset'])
+        color_print('Remove {}'.format(filename), 'magenta')
     if not os.path.isfile(filename):
         filename += ext
     if os.path.isfile(filename):
         os.remove(filename)
-
 
 # Check if list of files exists
 def files_exist(file_list):
@@ -69,7 +68,6 @@ def files_exist(file_list):
     for file in file_list:
         exist_list.append(os.path.isfile(file))
     return all(exist_list)
-
 
 # Issue command
 def run_command(command_str, undo=False):
@@ -79,7 +77,7 @@ def run_command(command_str, undo=False):
         command_list = command_str.split(';');
         for command in command_list:
             if not args.quiet:
-                print(color['cyan'] + '{}{}'.format('Undo 'if undo else '', command) + color['reset'])
+                color_print('{}{}'.format('Undo 'if undo else '', command), 'cyan')
             if command[0] == '@':
                 # Built-in commands start with @
                 param = command[1:].split(' ')
@@ -179,22 +177,22 @@ def run_command(command_str, undo=False):
                     ret = subprocess.call(command, shell=True)
                     if not args.debug:
                         if ret < 0:
-                            print(color['red'] + 'Command {} terminated by signal {}'.format(command.split(' ')[0], -ret) + color['reset'])
+                            color_print('Command {} terminated by signal {}'.format(command.split(' ')[0], -ret))
                             sys.exit(ret)
                         elif ret > 0:
-                            print(color['red'] + 'Command {} returned error {}'.format(command.split(' ')[0], ret) + color['reset'])
+                            color_print('Command {} returned error {}'.format(command.split(' ')[0], ret))
                             sys.exit(ret)
                 except OSError as e:
-                    print(color['red'] + 'Command execution failed: {}'.format(e) + color['reset'])
+                    color_print('Command execution failed: {}'.format(e))
                     sys.exit(1)
         # Restore working directory
         os.chdir(wd)
 
-
 # Main program
 total_time_start = datetime.datetime.now()
+execute_elapsed = total_time_start - total_time_start
 mimk_version = '1.30'
-mimk_date = '2021-01-04'
+mimk_date = '2021-02-26'
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', help='Target configuration file')
@@ -211,7 +209,7 @@ parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(
 args = parser.parse_args()
 
 # Start message
-print(color['yellow'] + 'mimk - Minimal make v{} ({})'.format(mimk_version, mimk_date) + color['reset'])
+color_print('mimk - Minimal make v{} ({})'.format(mimk_version, mimk_date), 'yellow')
 
 # Set config path
 config_dir = 'mimk'
@@ -245,7 +243,7 @@ try:
     if hasattr(config_module, 'config'):
         config.update(config_module.config)
 except ImportError as e:
-    print(color['red'] + 'Could not load config file {}.py: {}'.format(os.path.join(config_dir, args.config), e) + color['reset'])
+    color_print('Could not load config file {}.py: {}'.format(os.path.join(config_dir, args.config), e))
     sys.exit(1)
 try:
     target_module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + args.target, package=None)
@@ -260,12 +258,12 @@ try:
     if hasattr(target_module, 'config'):
         config.update(target_module.config)
 except ImportError as e:
-    print(color['red'] + 'Could not load target file {}.py: {}'.format(os.path.join(config_dir, args.target), e) + color['reset'])
+    color_print('Could not load target file {}.py: {}'.format(os.path.join(config_dir, args.target), e))
     sys.exit(1)
 std_dep_path = config['DEPPATH']
 std_obj_path = config['OBJPATH']
 if not args.quiet:
-    print('Build:  ' + color['cyan'] + '{}'.format(config['BUILD']) + color['reset'])
+    color_print('{}'.format(config['BUILD']), 'cyan', 'Build:  ')
 
 # Remove init file
 if os.path.isfile(init_file):
@@ -275,9 +273,9 @@ if os.path.isfile(init_file):
 if args.list:
     for target in targets:
         if target['TARGET']:
-            print(color['green'] + '{}'.format(target['TARGET']) + color['reset'])
+            color_print('{}'.format(target['TARGET']), 'green')
     for target in target_dict:
-        print(color['green'] + '{}'.format(target) + color['reset'])
+        color_print('{}'.format(target), 'green')
     sys.exit(0)
 
 # Execute option, also support variable name
@@ -292,7 +290,7 @@ if args.execute:
                     if not any(target['TARGET'] == target_attr['TARGET'] for target in targets):
                         targets.append(target_attr)
         else:
-            print(color['red'] + 'Could not find target {} to execute'.format(execute) + color['reset'])
+            color_print('Could not find target {} to execute'.format(execute))
             sys.exit(1)
     args.execute = new_execute_list
 
@@ -367,7 +365,7 @@ for index, target in enumerate(targets):
 
     # Check target
     if 'TARGET' not in target:
-        print(color['red'] + 'No target defined in section #{} of file {}.py'.format(str(index), args.target) + color['reset'])
+        color_print('No target defined in section #{} of file {}.py'.format(str(index), args.target))
         continue
 
     # Arg option
@@ -383,7 +381,7 @@ for index, target in enumerate(targets):
     if args.execute:
         if target['TARGET'] not in args.execute:
             continue
-    print('Target: ' + color['green'] + '{}'.format(target['TARGET']) + color['reset'])
+    color_print('{}'.format(target['TARGET']), 'green', 'Target: ')
 
     # Create target path and add to current config
     target_path = os.path.join(build_dir, target['TARGET'])
@@ -412,7 +410,7 @@ for index, target in enumerate(targets):
         # Get list of source files from target configuration
         src_files = target_module.src_files
         if not files_exist(src_files):
-            print(color['red'] + 'At least one source file could not be found: {}'.format(src_files) + color['reset'])
+            color_print('At least one source file could not be found: {}'.format(src_files))
             continue
     elif 'SRCDIR' in target:
         # Get list of all SRCEXT files from SRCDIR
@@ -424,7 +422,7 @@ for index, target in enumerate(targets):
         except Exception:
             pass
         if not src_files:
-            print(color['red'] + 'No source files found matching pattern ({})*.{}'.format(target['SRCDIR'], config['SRCEXT']) + color['reset'])
+            color_print('No source files found matching pattern ({})*.{}'.format(target['SRCDIR'], config['SRCEXT']))
             continue
 
     if not args.quiet:
@@ -479,7 +477,7 @@ for index, target in enumerate(targets):
                 # Sanity check
                 dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
                 if dep_obj_path != obj:
-                    print(color['red'] + 'Error: mismatch in dependency file {}: Expected {}, got {}'.format(dep_path, obj, dep_obj_path) + color['reset'])
+                    color_print('Error: mismatch in dependency file {}: Expected {}, got {}'.format(dep_path, obj, dep_obj_path))
                     sys.exit(1)
 
                 # Assume file is not modified unless one dependency file's hash is either missing or has changed
@@ -597,8 +595,9 @@ for index, target in enumerate(targets):
             time_start = datetime.datetime.now()
             run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
             elapsed = datetime.datetime.now() - time_start
+            execute_elapsed += elapsed
             if not args.quiet:
-                print(color['green'] + 'Execution time: {:.2f} seconds'.format(elapsed.total_seconds()) + color['reset'])
+                color_print('Execute: {}'.format(str(elapsed)), 'green')
 
         # Run post-processing rule
         if 'PSTRULE' in target and target['PSTRULE']:
@@ -607,5 +606,15 @@ for index, target in enumerate(targets):
 # End message
 if not args.quiet:
     total_elapsed = datetime.datetime.now() - total_time_start
-    print(color['green'] + 'Total time:     {:.2f} seconds'.format(total_elapsed.total_seconds()) + color['reset'])
-print(color['yellow'] + 'Done.' + color['reset'])
+    compile_elapsed = total_elapsed - execute_elapsed
+    compile_str = str(compile_elapsed)
+    if '.' not in compile_str:
+        compile_str += '.000000'
+    execute_str = str(execute_elapsed)
+    if '.' not in execute_str:
+        execute_str += '.000000'
+    color_print('Total time:', 'yellow')
+    color_print('Compile: {} ({:2.1f}%)'.format(compile_str, (compile_elapsed * 100) / total_elapsed), 'green')
+    color_print('Execute: {} ({:2.1f}%)'.format(execute_str, (execute_elapsed * 100) / total_elapsed), 'green')
+    color_print('Total:   {}'.format(str(total_elapsed)), 'green')
+color_print('Done.', 'yellow')
