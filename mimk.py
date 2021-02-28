@@ -191,25 +191,10 @@ def run_command(command_str, undo=False):
 # Main program
 total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
-mimk_version = '1.30'
-mimk_date = '2021-02-26'
-global args
-parser = argparse.ArgumentParser(description='mimk - Minimal make')
-parser.add_argument('target', help='Target configuration file')
-parser.add_argument('-a', '--arg', nargs='*', help='Add argument(s)')
-parser.add_argument('-c', '--config', default='gcc_release', help='Compiler configuration file')
-parser.add_argument('-d', '--debug', action='store_true', help='Debug mode, do not stop on errors')
-parser.add_argument('-l', '--list', action='store_true', help='List targets')
-parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
-parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
-parser.add_argument('-s', '--source', nargs='*', help='Source folder(s), overrides SRCDIR')
-parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
-parser.add_argument('-w', '--wipe', action='store_true', help='Wipe build database')
-parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(s)')
-args = parser.parse_args()
 
-# Start message
-color_print('mimk - Minimal make v{} ({})'.format(mimk_version, mimk_date), 'yellow')
+# Version and date
+mimk_version = '1.31'
+mimk_date = '2021-02-28'
 
 # Set config path
 config_dir = 'mimk'
@@ -223,6 +208,43 @@ init_file = os.path.join(config_dir, '__init__.py')
 if not os.path.isfile(init_file):
     open(init_file, 'a').close()
 
+# Prevent *.pyc file creation
+sys.dont_write_bytecode=True
+
+# Get list of target and config files
+target_choices = []
+config_choices = []
+for file in os.listdir(config_dir):
+    if file.endswith('.py'):
+        module_file = os.path.splitext(file)[0]
+        try:
+            module = importlib.import_module(config_dir + ('' if config_dir == '' else '.') + module_file, package=None)
+            if hasattr(module, 'targets'):
+                target_choices.append(module_file)
+            elif hasattr(module, 'config'):
+                config_choices.append(module_file)
+        except ImportError as e:
+            pass
+
+# Argument parsing
+global args
+parser = argparse.ArgumentParser(description='mimk - Minimal make')
+parser.add_argument('target', choices=target_choices, help='Target configuration file')
+parser.add_argument('-a', '--arg', nargs='*', help='Add argument(s)')
+parser.add_argument('-c', '--config', choices=config_choices, default='gcc_release', help='Compiler configuration file')
+parser.add_argument('-d', '--debug', action='store_true', help='Debug mode, do not stop on errors')
+parser.add_argument('-l', '--list', action='store_true', help='List targets')
+parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
+parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
+parser.add_argument('-s', '--source', nargs='*', help='Source folder(s), overrides SRCDIR')
+parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
+parser.add_argument('-w', '--wipe', action='store_true', help='Wipe build database')
+parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(s)')
+args = parser.parse_args()
+
+# Start message
+color_print('mimk - Minimal make v{} ({})'.format(mimk_version, mimk_date), 'yellow')
+
 # Set default config
 config = {
     'BUILD':    args.config,
@@ -233,9 +255,6 @@ config = {
     'DEPEXT':   'd',
     'OBJEXT':   'o'
 }
-
-# Prevent *.pyc file creation
-sys.dont_write_bytecode=True
 
 # Import config and target
 try:
