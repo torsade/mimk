@@ -193,8 +193,8 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.31'
-mimk_date = '2021-02-28'
+mimk_version = '1.32'
+mimk_date = '2021-03-02'
 
 # Set config path
 config_dir = 'mimk'
@@ -349,7 +349,7 @@ if args.verbose:
             hash_inc += 1
         else:
             hash_trgt += 1
-    print('Loaded hash dictionary with {} entries (src: {}, inc: {}, trgt: {}).'.format(len(hash_dict), hash_src, hash_inc, hash_trgt))
+    color_print('Loaded hash dictionary with {} entries (src: {}, inc: {}, trgt: {}).'.format(len(hash_dict), hash_src, hash_inc, hash_trgt), 'reset')
 
 # Process targets
 for index, target in enumerate(targets):
@@ -388,9 +388,7 @@ for index, target in enumerate(targets):
         continue
 
     # Arg option
-    arg = []
-    if args.arg:
-        arg = args.arg
+    arg = args.arg if args.arg else []
     config['ARGS'] = ' '.join(arg)
 
     # Copy target name to config
@@ -445,7 +443,7 @@ for index, target in enumerate(targets):
             continue
 
     if not args.quiet:
-        print('Processing {} source files...'.format(len(src_files)))
+        color_print('Processing {} source files...'.format(len(src_files)), 'reset')
 
     # Compile all files
     new_hash_dict = {}
@@ -632,8 +630,8 @@ if not args.quiet:
     execute_str = str(execute_elapsed)
     if '.' not in execute_str:
         execute_str += '.000000'
-    color_print('Total time:', 'yellow')
-    color_print('Compile: {} ({:2.1f}%)'.format(compile_str, (compile_elapsed * 100) / total_elapsed), 'green')
-    color_print('Execute: {} ({:2.1f}%)'.format(execute_str, (execute_elapsed * 100) / total_elapsed), 'green')
+    color_print('Timings:', 'yellow')
+    color_print('Compile: {} ({:2.1f}%)'.format(compile_str, (compile_elapsed.total_seconds() * 100) / total_elapsed.total_seconds()), 'green')
+    color_print('Execute: {} ({:2.1f}%)'.format(execute_str, (execute_elapsed.total_seconds() * 100) / total_elapsed.total_seconds()), 'green')
     color_print('Total:   {}'.format(str(total_elapsed)), 'green')
 color_print('Done.', 'yellow')
