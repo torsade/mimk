@@ -15,7 +15,7 @@ Mimk (short for **minimal make**) is a small build automation system written in 
 Mimk consists of just one Python script file 'mimk.py'.
 Usage:
 ```
-    python mimk.py [-h] [-a ARG] [-c CONFIG] [-d] [-l] [-q] [-r] [-s DIR] [-v] [-w] [-x EXECUTE] target
+    python mimk.py [-h] [-a ARG] [-c CONFIG] [-d] [-l] [-q] [-r] [-s DIR] [-v] [-w] [-x EXECUTE] [-y EXCLUDE] target
     target                      Target configuration file
     -h, --help                  Show help message and exit
     -a [ARG [ARG ...]], --arg [ARG [ARG ...]]
@@ -32,6 +32,8 @@ Usage:
     -w, --wipe                  Wipe database before build
     -x [EXECUTE [EXECUTE ...]], --execute [EXECUTE [EXECUTE ...]]
                                 Execute specific target(s)
+    -y [EXCLUDE [EXCLUDE ...]], --exclude [EXCLUDE [EXCLUDE ...]]
+                                Exclude specific target(s)
 ```
 
 ## Examples

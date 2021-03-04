@@ -193,8 +193,8 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.32'
-mimk_date = '2021-03-02'
+mimk_version = '1.33'
+mimk_date = '2021-03-04'
 
 # Set config path
 config_dir = 'mimk'
@@ -240,6 +240,7 @@ parser.add_argument('-s', '--source', nargs='*', help='Source folder(s), overrid
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
 parser.add_argument('-w', '--wipe', action='store_true', help='Wipe build database')
 parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(s)')
+parser.add_argument('-y', '--exclude', nargs='*', help='Exclude specific target(s)')
 args = parser.parse_args()
 
 # Start message
@@ -312,6 +313,19 @@ if args.execute:
             color_print('Could not find target {} to execute'.format(execute))
             sys.exit(1)
     args.execute = new_execute_list
+
+# Exclude option
+for exclude in args.exclude or []:
+    if exclude in target_dict:
+        target_attr = getattr(target_module, exclude)
+        if isinstance(target_attr, dict):
+            if 'TARGET' in target_attr:
+                targets.remove(target_attr)
+    else:
+        color_print('Could not find target {} to exclude'.format(exclude))
+        sys.exit(1)
+    if args.execute and exclude in args.execute:
+        args.execute.remove(exclude)
 
 # Build dir paths
 build_dir = os.path.join('build', config['BUILD'])
