@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import argparse
 import datetime
 import glob
@@ -43,6 +44,16 @@ def sha256file(filename, ext=''):
         return -1
     return hash_sha256.hexdigest()
 
+# Print progress
+def print_progress(iteration, total, name='', length=50):
+    col = (80 if sys.version_info < (3, 0) else shutil.get_terminal_size()[0]) - length - 17
+    percent = ('{0:.1f}').format(100 * (iteration / float(total)))
+    filled_length = int(col * iteration // total)
+    bar = u'\u2591' * filled_length + ' ' * (col - filled_length)
+    print(u'\r{} {}% ({}/{}) {}'.format(bar,percent, iteration, total, name[:length].ljust(length)), end='\r', file=sys.stderr)
+    if iteration == total:
+        print(file=sys.stderr)
+
 # Evaluate rule by replacing variables
 def eval_rule(rule_str):
     if rule_str:
@@ -70,7 +81,7 @@ def files_exist(file_list):
     return all(exist_list)
 
 # Issue command
-def run_command(command_str, undo=False):
+def run_command(command_str, undo=False, iteration=0, total=0, name=''):
     if command_str:
         # Remember current working directory
         wd = os.getcwd()
@@ -172,6 +183,9 @@ def run_command(command_str, undo=False):
                             # Run python code
                             exec(' '.join(param[1:]))
             else:
+                # Print progress
+                if total > 0:
+                    print_progress(iteration, total, name)
                 # External command
                 try:
                     ret = subprocess.call(command, shell=True)
@@ -193,15 +207,11 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.33'
-mimk_date = '2021-03-04'
+mimk_version = '1.34'
+mimk_date = '2021-03-16'
 
 # Set config path
-config_dir = 'mimk'
-if not os.path.isdir(config_dir):
-    config_dir = 'cfg'
-    if not os.path.isdir(config_dir):
-        config_dir = ''
+config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')
 
 # Check init file and create it if it doesn't exist
 init_file = os.path.join(config_dir, '__init__.py')
@@ -464,9 +474,13 @@ for index, target in enumerate(targets):
     obj_list = []
     obj_list_rel = []
     modified_any = False
-    for src_path in src_files:
+    total = len(src_files)
+    for idx, src_path in enumerate(src_files):
+
         # Convert separators
         src_path = src_path.replace('/', os.sep)
+        src_name  = os.path.basename(src_path)
+        iteration = idx + 1
 
         # Setup paths for dependency, source, and object files
         dep = os.path.splitext(src_path)[0] + '.' + config['DEPEXT']
@@ -481,9 +495,9 @@ for index, target in enumerate(targets):
             remove(dep_path)
             remove(obj_path)
             if 'REMRULE' in target and target['REMRULE']:
-                run_command(eval_rule(target['REMRULE']))
+                run_command(eval_rule(target['REMRULE']), iteration=iteration, total=total, name=src_name)
             if 'PRERULE' in target and target['PRERULE']:
-                run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')), True)
+                run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')), undo=True, iteration=iteration, total=total, name=src_name)
             continue
 
         # Add paths to config
@@ -541,7 +555,7 @@ for index, target in enumerate(targets):
 
             # Compile source file
             if 'SRCRULE' in target and target['SRCRULE']:
-                run_command(eval_rule(target['SRCRULE']))
+                run_command(eval_rule(target['SRCRULE']), iteration=iteration, total=total, name=src_name)
 
             # Add dependencies' hashes to new dictionary
             if dependencies:
