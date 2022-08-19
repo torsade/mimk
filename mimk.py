@@ -173,6 +173,16 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                         if not undo:
                             # Run external command, ignoring errors
                             subprocess.call(param[1:], shell=True)
+                    elif param[0] == 'try':
+                        if not undo:
+                            tries = int(param[1])
+                            while tries > 0:
+                                # Run external command, trying several times if error occurs
+                                ret = subprocess.call(param[2:], shell=True)
+                                if ret == 0:
+                                    break
+                                else:
+                                    tries -= 1
                     elif param[0] == 'exists':
                         if not undo:
                             # Run external command if path exists, ignoring errors
@@ -207,8 +217,8 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.34'
-mimk_date = '2021-03-16'
+mimk_version = '1.35'
+mimk_date = '2022-08-19'
 
 # Set config path
 config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')

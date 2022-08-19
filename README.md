@@ -170,6 +170,7 @@ Wildcards ('*') are supported.
 | 'cat'     | Concatenate multiple files into one   | dst file, source files     |
 | 'cd'      | Change directory                      | dir                        |
 | 'ok'      | Run external command, ignoring errors | external command           |
+| 'try'     | Run external command, retry on error  | tries, external command    |
 | 'exists'  | Run external command, ignoring errors | dir/file, external command |
 | 'python'  | Run Python script                     | Python commands            |
 
