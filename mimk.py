@@ -12,6 +12,10 @@ import string
 import subprocess
 import sys
 
+# Terminal detection
+def is_terminal():
+    return hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+
 # Color printing
 def color_print(str, col='red', pre=''):
     color = {
@@ -21,8 +25,11 @@ def color_print(str, col='red', pre=''):
         'yellow': '\033[93m',
         'blue': '\033[94m',
         'magenta': '\033[95m',
-        'cyan': '\033[96m'
+        'cyan': '\033[96m',
+        'none': ''
     }
+    if not is_terminal():
+        col = 'none'
     print(pre + color[col] + str + color['reset'])
 
 # Remove duplicates from list
@@ -194,7 +201,7 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                             exec(' '.join(param[1:]))
             else:
                 # Print progress
-                if total > 0:
+                if total > 0 and is_terminal():
                     print_progress(iteration, total, name)
                 # External command
                 try:
@@ -217,8 +224,8 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.35'
-mimk_date = '2022-08-19'
+mimk_version = '1.36'
+mimk_date = '2022-08-20'
 
 # Set config path
 config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')
