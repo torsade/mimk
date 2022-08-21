@@ -28,9 +28,11 @@ def color_print(str, col='red', pre=''):
         'cyan': '\033[96m',
         'none': ''
     }
+    reset = 'reset'
     if not is_terminal():
         col = 'none'
-    print(pre + color[col] + str + color['reset'])
+        reset = 'none'
+    print(pre + color[col] + str + color[reset])
 
 # Remove duplicates from list
 def unique_list(list):
@@ -224,8 +226,8 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.36'
-mimk_date = '2022-08-20'
+mimk_version = '1.37'
+mimk_date = '2022-08-21'
 
 # Set config path
 config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')
