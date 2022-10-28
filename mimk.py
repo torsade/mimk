@@ -226,8 +226,8 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.37'
-mimk_date = '2022-08-21'
+mimk_version = '1.38'
+mimk_date = '2022-10-28'
 
 # Set config path
 config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')
@@ -434,8 +434,8 @@ for index, target in enumerate(targets):
     arg = args.arg if args.arg else []
     config['ARGS'] = ' '.join(arg)
 
-    # Copy target name to config
-    config['TARGET'] = target['TARGET']
+    # Copy target names (i.e., all names starting with 'TARGET') to config
+    config.update([[key, value] for key, value in target.items() if key.startswith('TARGET')])
 
     # Execute only specific target(s)
     if args.execute:
