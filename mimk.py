@@ -226,8 +226,8 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.38'
-mimk_date = '2022-10-28'
+mimk_version = '1.39'
+mimk_date = '2022-11-08'
 
 # Set config path
 config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')
@@ -395,6 +395,7 @@ if args.verbose:
     color_print('Loaded hash dictionary with {} entries (src: {}, inc: {}, trgt: {}).'.format(len(hash_dict), hash_src, hash_inc, hash_trgt), 'reset')
 
 # Process targets
+previous = []
 for index, target in enumerate(targets):
     # If defined, target extensions override config extensions
     if 'SRCEXT' in target:
@@ -604,7 +605,7 @@ for index, target in enumerate(targets):
                 if hash == -1:
                     hash_dict.pop(dep, None)
                 elif dep in hash_dict:
-                    if hash_dict[dep] != hash:
+                    if hash_dict[dep] != hash or dep in previous:
                         modified = True
                         new_hash_dict[dep] = hash
                 else:
@@ -640,6 +641,7 @@ for index, target in enumerate(targets):
                 hash = sha256file(target_path, '.exe')
                 if hash != -1:
                     hash_dict[target_path_dict] = hash
+                    previous.append(target_path_dict)
             except Exception:
                 pass
 
