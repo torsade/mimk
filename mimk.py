@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import argparse
+import concurrent.futures
 import datetime
 import glob
 import hashlib
@@ -11,6 +12,7 @@ import shutil
 import string
 import subprocess
 import sys
+import threading
 
 # Terminal detection
 def is_terminal():
@@ -64,17 +66,18 @@ def print_progress(iteration, total, name='', length=50):
         print(file=sys.stderr)
 
 # Evaluate rule by replacing variables
-def eval_rule(rule_str):
+def eval_rule(rule_str, config):
     if rule_str:
         return string.Template(rule_str).safe_substitute(config)
 
 # Make directory
 def makedir(pathname):
     if not os.path.exists(pathname):
-        os.makedirs(pathname)
+        os.makedirs(pathname, exist_ok=True)
 
 # Remove file
 def remove(filename, ext=''):
+    global args
     if not args.quiet:
         color_print('Remove {}'.format(filename), 'magenta')
     if not os.path.isfile(filename):
@@ -91,6 +94,7 @@ def files_exist(file_list):
 
 # Issue command
 def run_command(command_str, undo=False, iteration=0, total=0, name=''):
+    global args
     if command_str:
         # Remember current working directory
         wd = os.getcwd()
@@ -221,13 +225,115 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
         # Restore working directory
         os.chdir(wd)
 
+# Build dependency and source files, using threading
+def build_dep_and_src(lock, src_path, idx):
+    global config, dep_dir, obj_dir, base_offset, args, target, total, hash_dict, new_hash_dict, obj_list, obj_list_rel
+
+    # Convert separators
+    src_path = src_path.replace('/', os.sep)
+    src_name  = os.path.basename(src_path)
+    iteration = idx + 1
+
+    # Setup paths for dependency, source, and object files
+    dep = os.path.splitext(src_path)[0] + '.' + config['DEPEXT']
+    obj = os.path.splitext(src_path)[0] + '.' + config['OBJEXT']
+    dep_path = os.path.join(dep_dir, dep)
+    obj_path = os.path.join(obj_dir, obj)
+    makedir(os.path.split(dep_path)[0])
+    makedir(os.path.split(obj_path[base_offset:])[0])
+
+    # Remove dependency and object files if remove flag is set
+    if args.remove:
+        remove(dep_path)
+        remove(obj_path)
+        if 'REMRULE' in target and target['REMRULE']:
+            run_command(eval_rule(target['REMRULE'], config), iteration=iteration, total=total, name=src_name)
+        if 'PRERULE' in target and target['PRERULE']:
+            run_command(os.path.join(*eval_rule(target['PRERULE'], config).split('/')), undo=True, iteration=iteration, total=total, name=src_name)
+        return False
+
+    # Add paths to local thread's config
+    local_config = config.copy()
+    local_config['SRC_PATH'] = src_path
+    local_config['DEP_PATH'] = dep_path
+    local_config['OBJ_PATH'] = obj_path
+
+    # Create dependency file if it does not exist
+    dependencies = []
+    if not os.path.exists(dep_path):
+        if 'DEPRULE' in target and target['DEPRULE']:
+            command_dep = eval_rule(target['DEPRULE'], local_config)
+            run_command(command_dep)
+
+    # Firstly, assume file is modified
+    modified = True
+
+    # Get list of dependencies
+    if 'DEPRULE' in target and target['DEPRULE']:
+        try:
+            with open(dep_path) as dep_file:
+                dep_str = dep_file.read()
+            dependencies = unique_list(dep_str.replace(': ', ' ').replace(' \\', '').replace('\\', '/').replace('\n', '').replace('\r', '').split(' '))
+
+            # Sanity check
+            dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
+            if dep_obj_path != obj:
+                color_print('Error: mismatch in dependency file {}: Expected {}, got {}'.format(dep_path, obj, dep_obj_path))
+                sys.exit(1)
+
+            # Assume file is not modified unless one dependency file's hash is either missing or has changed
+            modified = False
+
+            # Check for all dependencies, starting with second (first is resulting object file)
+            for dep_path in dependencies[1:]:
+                # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
+                hash = sha256file(dep_path)
+
+                if dep_path in hash_dict:
+                    if hash_dict[dep_path] != hash:
+                        # Different hash, so file has been modified
+                        modified = True
+                        break
+                else:
+                    # New file, mark as modified
+                    modified = True
+                    break
+        except:
+            pass
+
+    # Check if object file exists
+    if not os.path.exists(obj_path):
+        modified = True
+
+    if modified:
+        # Compile source file
+        if 'SRCRULE' in target and target['SRCRULE']:
+            command_src = eval_rule(target['SRCRULE'], local_config)
+            with lock:
+                run_command(command_src, iteration=iteration, total=total, name=src_name)
+
+        # Add dependencies' hashes to new dictionary
+        if dependencies:
+            for dep_path in dependencies[1:]:
+                hash = sha256file(dep_path)
+                if hash != -1:
+                    with lock:
+                        new_hash_dict[dep_path] = hash
+
+    # After object file has been compiled, append it to list
+    with lock:
+        obj_list.append(obj_path)
+        obj_list_rel.append(obj[base_offset:])
+
+    return modified
+
 # Main program
 total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.39'
-mimk_date = '2022-11-08'
+mimk_version = '1.40'
+mimk_date = '2023-01-28'
 
 # Set config path
 config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')
@@ -255,17 +361,21 @@ for file in os.listdir(config_dir):
         except ImportError as e:
             pass
 
+# Default compiler
+default_compiler = os.environ.get('MIMK_COMPILER', 'gcc_release')
+
 # Argument parsing
 global args
 parser = argparse.ArgumentParser(description='mimk - Minimal make')
 parser.add_argument('target', choices=target_choices, help='Target configuration file')
 parser.add_argument('-a', '--arg', nargs='*', help='Add argument(s)')
-parser.add_argument('-c', '--config', choices=config_choices, default='gcc_release', help='Compiler configuration file')
+parser.add_argument('-c', '--config', choices=config_choices, default=default_compiler, help='Compiler configuration file')
 parser.add_argument('-d', '--debug', action='store_true', help='Debug mode, do not stop on errors')
 parser.add_argument('-l', '--list', action='store_true', help='List targets')
 parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
 parser.add_argument('-r', '--remove', action='store_true', help='Remove all dependency, object and executable files and undo pre-processing rule')
 parser.add_argument('-s', '--source', nargs='*', help='Source folder(s), overrides SRCDIR')
+parser.add_argument('-t', '--threads', type=int, choices=range(0, 33), default=0, help='Number of threads (0: default, 1: turn off threading)')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
 parser.add_argument('-w', '--wipe', action='store_true', help='Wipe build database')
 parser.add_argument('-x', '--execute', nargs='*', help='Execute specific target(s)')
@@ -463,7 +573,7 @@ for index, target in enumerate(targets):
     # Run pre-processing rule
     if not args.remove:
         if 'PRERULE' in target and target['PRERULE']:
-            run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')))
+            run_command(os.path.join(*eval_rule(target['PRERULE'], config).split('/')))
 
     # Get source files list
     src_files = []
@@ -495,98 +605,26 @@ for index, target in enumerate(targets):
     obj_list_rel = []
     modified_any = False
     total = len(src_files)
-    for idx, src_path in enumerate(src_files):
 
-        # Convert separators
-        src_path = src_path.replace('/', os.sep)
-        src_name  = os.path.basename(src_path)
-        iteration = idx + 1
+    # Create lock
+    lock = threading.Lock()
 
-        # Setup paths for dependency, source, and object files
-        dep = os.path.splitext(src_path)[0] + '.' + config['DEPEXT']
-        obj = os.path.splitext(src_path)[0] + '.' + config['OBJEXT']
-        dep_path = os.path.join(dep_dir, dep)
-        obj_path = os.path.join(obj_dir, obj)
-        makedir(os.path.split(dep_path)[0])
-        makedir(os.path.split(obj_path[base_offset:])[0])
+    # Set number of threads
+    threads = args.threads if args.threads > 0 else None
+    if 'THREADS' in target:
+        threads = target['THREADS'] if target['THREADS'] > 0 else None
 
-        # Remove dependency and object files if remove flag is set
-        if args.remove:
-            remove(dep_path)
-            remove(obj_path)
-            if 'REMRULE' in target and target['REMRULE']:
-                run_command(eval_rule(target['REMRULE']), iteration=iteration, total=total, name=src_name)
-            if 'PRERULE' in target and target['PRERULE']:
-                run_command(os.path.join(*eval_rule(target['PRERULE']).split('/')), undo=True, iteration=iteration, total=total, name=src_name)
-            continue
+    # Concurrently get source file dependencies and compile source files
+    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+        futures = []
+        for idx, src_path in enumerate(src_files):
+            futures.append(executor.submit(build_dep_and_src, lock=lock, src_path=src_path, idx=idx))
 
-        # Add paths to config
-        config['SRC_PATH'] = src_path
-        config['DEP_PATH'] = dep_path
-        config['OBJ_PATH'] = obj_path
-
-        # Create dependency file if it does not exist
-        dependencies = []
-        if not os.path.exists(dep_path):
-            if 'DEPRULE' in target and target['DEPRULE']:
-                run_command(eval_rule(target['DEPRULE']))
-
-        # Firstly, assume file is modified
-        modified = True
-
-        # Get list of dependencies
-        if 'DEPRULE' in target and target['DEPRULE']:
-            try:
-                dependencies = unique_list(filter(None, open(dep_path, 'r').read().replace(': ', ' ').replace(' \\', '').replace('\\', '/').replace('\n', '').replace('\r', '').split(' ')))
-
-                # Sanity check
-                dep_obj_path = os.path.join(os.path.split(src_path)[0], dependencies[0])
-                if dep_obj_path != obj:
-                    color_print('Error: mismatch in dependency file {}: Expected {}, got {}'.format(dep_path, obj, dep_obj_path))
-                    sys.exit(1)
-
-                # Assume file is not modified unless one dependency file's hash is either missing or has changed
-                modified = False
-
-                # Check for all dependencies, starting with second (first is resulting object file)
-                for dep_path in dependencies[1:]:
-                    # Check if file has been modified by checking its SHA-256 hash against a list of known hashes
-                    hash = sha256file(dep_path)
-
-                    if dep_path in hash_dict:
-                        if hash_dict[dep_path] != hash:
-                            # Different hash, so file has been modified
-                            modified = True
-                            break
-                    else:
-                        # New file, mark as modified
-                        modified = True
-                        break
-            except:
-                pass
-
-        # Check if object file exists
-        if not os.path.exists(obj_path):
-            modified = True
-
-        if modified:
-            # Set modified_any flag
-            modified_any = True
-
-            # Compile source file
-            if 'SRCRULE' in target and target['SRCRULE']:
-                run_command(eval_rule(target['SRCRULE']), iteration=iteration, total=total, name=src_name)
-
-            # Add dependencies' hashes to new dictionary
-            if dependencies:
-                for dep_path in dependencies[1:]:
-                    hash = sha256file(dep_path)
-                    if hash != -1:
-                        new_hash_dict[dep_path] = hash
-
-        # After object file has been compiled, append it to list
-        obj_list.append(obj_path)
-        obj_list_rel.append(obj[base_offset:])
+        for future in concurrent.futures.as_completed(futures):
+            modified = future.result()
+            if modified:
+                # Set modified_any flag
+                modified_any = True
 
     # Add object list to current config
     config['OBJ_LIST'] = ' '.join(obj_list)
@@ -597,7 +635,7 @@ for index, target in enumerate(targets):
 
     # Handle additional dependencies
     if 'DEPENDS' in target:
-        config['DEPENDS'] = eval_rule(target['DEPENDS'])
+        config['DEPENDS'] = eval_rule(target['DEPENDS'], config)
         depends = config['DEPENDS'].split(' ')
         for dep in depends:
             try:
@@ -634,7 +672,7 @@ for index, target in enumerate(targets):
         # Create target file
         if modified or modified_any:
             if 'OBJRULE' in target and target['OBJRULE']:
-                run_command(eval_rule(target['OBJRULE']))
+                run_command(eval_rule(target['OBJRULE'], config))
 
             # Append hash of newly generated file to list
             try:
@@ -659,7 +697,7 @@ for index, target in enumerate(targets):
     if not args.remove:
         if 'EXERULE' in target and target['EXERULE']:
             time_start = datetime.datetime.now()
-            run_command(os.path.join(*eval_rule(target['EXERULE']).split('/')))
+            run_command(os.path.join(*eval_rule(target['EXERULE'], config).split('/')))
             elapsed = datetime.datetime.now() - time_start
             execute_elapsed += elapsed
             if not args.quiet:
@@ -667,7 +705,7 @@ for index, target in enumerate(targets):
 
         # Run post-processing rule
         if 'PSTRULE' in target and target['PSTRULE']:
-            run_command(os.path.join(*eval_rule(target['PSTRULE']).split('/')))
+            run_command(os.path.join(*eval_rule(target['PSTRULE'], config).split('/')))
 
 # End message
 if not args.quiet:

@@ -28,6 +28,7 @@ Usage:
                                 undo pre-processing rule
     -s [SRC [SRC ...]], --source [SRC [SRC ...]]
                                 Source folder(s), overrides SRCDIR
+    -t, --threads               Number of threads (0: default, 1: turn off threading)
     -v, --verbose               Verbose output
     -w, --wipe                  Wipe database before build
     -x [EXECUTE [EXECUTE ...]], --execute [EXECUTE [EXECUTE ...]]
@@ -75,7 +76,8 @@ Multiple levels of sub-folders can be addressed by using a '.' as path separator
 
 ## Compiler configuration
 The compiler configuration file contains information about compilers, linkers and flags.
-If no compiler configuration file is given, the default file 'gcc_release.py' is used.
+If no compiler configuration file is given on the command line, the environment variable 'MIMK_COMPILER' is used.
+If it does not exist, the default file 'gcc_release.py' is used.
 The entry point is the dictionary variable 'config'.
 The following keys are supported:
 
@@ -121,6 +123,7 @@ Although the keys used within target rules can be freely defined, these keys are
 | 'CFLAGS'   | Compiler flags                     | '-Wall'   |
 | 'DEPFLAGS' | Flags to generate dependency files | '-MM -MF' |
 | 'LDFLAGS'  | Linker flags                       | '-lm'     |
+| 'THREADS'  | Number of threads                  | 1         |
 
 ## Target Configuration
 The target configuration file contains information about how to build the target(s).
@@ -145,7 +148,7 @@ Target-specific compiler configuration keys can be added to the target configura
 The 'config' keys from the compiler configuration file can be overridden by defining the same key in the 'config' variable in the target configuration file.
 Further, the extension keys SRCEXT, INCEXT, DEPEXT, and OBJEXT can be defined in the target configuration and override the compiler configuration.
 Additionally, extension keys starting with TARGET defined in the target configuration are copied to the compiler configuration.
-    
+
 ### Source files
 If you want mimk to use all source files from one or multiple folders, define 'SRCDIR' as the path to those folders (mimk will then collect all files matching $SRCDIR/*.$SRCEXT).
 Instead, if you rather want to provide a list with all source files, define them (with relative path) in the list variable 'src_files'.
