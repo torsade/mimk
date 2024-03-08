@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
 import argparse
 import concurrent.futures
 import datetime
@@ -78,11 +77,11 @@ def makedir(pathname):
 # Remove file
 def remove(filename, ext=''):
     global args
-    if not args.quiet:
-        color_print('Remove {}'.format(filename), 'magenta')
     if not os.path.isfile(filename):
         filename += ext
     if os.path.isfile(filename):
+        if not args.quiet:
+            color_print('Remove {}'.format(filename), 'magenta')
         os.remove(filename)
 
 # Check if list of files exists
@@ -104,7 +103,7 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                 color_print('{}{}'.format('Undo 'if undo else '', command), 'cyan')
             if command[0] == '@':
                 # Built-in commands start with @
-                param = command[1:].split(' ')
+                param = [x for x in command[1:].split(' ') if x]
                 src_list = glob.glob(param[1]) if '*' in param[1] else [param[1]]
                 for src_file in src_list:
                     if param[0] == 'copy':
@@ -185,13 +184,13 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                     elif param[0] == 'ok':
                         if not undo:
                             # Run external command, ignoring errors
-                            subprocess.call(param[1:], shell=True)
+                            subprocess.run(param[1:])
                     elif param[0] == 'try':
                         if not undo:
                             tries = int(param[1])
                             while tries > 0:
                                 # Run external command, trying several times if error occurs
-                                ret = subprocess.call(param[2:], shell=True)
+                                ret = subprocess.run(param[2:]).returncode
                                 if ret == 0:
                                     break
                                 else:
@@ -200,7 +199,7 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                         if not undo:
                             # Run external command if path exists, ignoring errors
                             if os.path.exists(param[1]):
-                                subprocess.call(param[2:], shell=True)
+                                subprocess.run(param[2:])
                     elif param[0] == 'python':
                         if not undo:
                             # Run python code
@@ -211,7 +210,7 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                     print_progress(iteration, total, name)
                 # External command
                 try:
-                    ret = subprocess.call(command, shell=True)
+                    ret = subprocess.run([x for x in command.split(' ') if x]).returncode
                     if not args.debug:
                         if ret < 0:
                             color_print('Command {} terminated by signal {}'.format(command.split(' ')[0], -ret))
@@ -309,8 +308,8 @@ def build_dep_and_src(lock, src_path, idx):
         # Compile source file
         if 'SRCRULE' in target and target['SRCRULE']:
             command_src = eval_rule(target['SRCRULE'], local_config)
-            with lock:
-                run_command(command_src, iteration=iteration, total=total, name=src_name)
+            #with lock:
+            run_command(command_src, iteration=iteration, total=total, name=src_name)
 
         # Add dependencies' hashes to new dictionary
         if dependencies:
@@ -332,8 +331,8 @@ total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
 
 # Version and date
-mimk_version = '1.40'
-mimk_date = '2023-01-28'
+mimk_version = '1.41'
+mimk_date = '2024-03-09'
 
 # Set config path
 config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')
@@ -613,6 +612,8 @@ for index, target in enumerate(targets):
     threads = args.threads if args.threads > 0 else None
     if 'THREADS' in target:
         threads = target['THREADS'] if target['THREADS'] > 0 else None
+    if args.remove:
+        threads = 1
 
     # Concurrently get source file dependencies and compile source files
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
