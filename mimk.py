@@ -185,13 +185,13 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                     elif param[0] == 'ok':
                         if not undo:
                             # Run external command, ignoring errors
-                            subprocess.run(param[1:])
+                            subprocess.run(' '.join(param[1:]), shell=True)
                     elif param[0] == 'try':
                         if not undo:
                             tries = int(param[1])
                             while tries > 0:
                                 # Run external command, trying several times if error occurs
-                                ret = subprocess.run(param[2:]).returncode
+                                ret = subprocess.run(' '.join(param[2:]), shell=True).returncode
                                 if ret == 0:
                                     break
                                 else:
@@ -200,7 +200,7 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                         if not undo:
                             # Run external command if path exists, ignoring errors
                             if os.path.exists(param[1]):
-                                subprocess.run(param[2:])
+                                subprocess.run(' '.join(param[2:]), shell=True)
                     elif param[0] == 'python':
                         if not undo:
                             # Run python code
@@ -211,7 +211,7 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                     print_progress(iteration, total, name)
                 # External command
                 try:
-                    ret = subprocess.run([x for x in shlex.split(command, posix=False) if x]).returncode
+                    ret = subprocess.run(' '.join([x for x in shlex.split(command, posix=False) if x]), shell=True).returncode
                     if not args.debug:
                         if ret < 0:
                             color_print('Command {} terminated by signal {}'.format(command.split(' ')[0], -ret))
