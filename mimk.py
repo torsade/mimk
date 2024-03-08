@@ -7,6 +7,7 @@ import hashlib
 import importlib
 import json
 import os
+import shlex
 import shutil
 import string
 import subprocess
@@ -103,7 +104,7 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                 color_print('{}{}'.format('Undo 'if undo else '', command), 'cyan')
             if command[0] == '@':
                 # Built-in commands start with @
-                param = [x for x in command[1:].split(' ') if x]
+                param = [x for x in shlex.split(command[1:], posix=False) if x]
                 src_list = glob.glob(param[1]) if '*' in param[1] else [param[1]]
                 for src_file in src_list:
                     if param[0] == 'copy':
@@ -210,7 +211,7 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                     print_progress(iteration, total, name)
                 # External command
                 try:
-                    ret = subprocess.run([x for x in command.split(' ') if x]).returncode
+                    ret = subprocess.run([x for x in shlex.split(command, posix=False) if x]).returncode
                     if not args.debug:
                         if ret < 0:
                             color_print('Command {} terminated by signal {}'.format(command.split(' ')[0], -ret))
