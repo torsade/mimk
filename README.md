@@ -163,20 +163,21 @@ Internal commands provide an OS-independent way for common operations on files a
 They are written in lower-case and start with an '@' sign.
 Wildcards ('*') are supported.
 
-| Command   | Description                           | Parameters                 |
-| --------- | ------------------------------------- | -------------------------- |
-| 'copy'    | Copy file                             | src file, dst dir/file     |
-| 'move'    | Move file                             | src file, dst dir/file     |
-| 'rename'  | Rename file                           | old file, new file         |
-| 'makedir' | Make directory                        | dir                        |
-| 'delete'  | Delete file or directory              | dir/file                   |
-| 'echo'    | Echo parameters into file             | dst file, parameters       |
-| 'cat'     | Concatenate multiple files into one   | dst file, source files     |
-| 'cd'      | Change directory                      | dir                        |
-| 'ok'      | Run external command, ignoring errors | external command           |
-| 'try'     | Run external command, retry on error  | tries, external command    |
-| 'exists'  | Run external command, ignoring errors | dir/file, external command |
-| 'python'  | Run Python script                     | Python commands            |
+| Command   | Description                             | Parameters                 |
+| --------- | --------------------------------------- | -------------------------- |
+| 'copy'    | Copy file                               | src file, dst dir/file     |
+| 'move'    | Move file                               | src file, dst dir/file     |
+| 'rename'  | Rename file                             | old file, new file         |
+| 'makedir' | Make directory                          | dir                        |
+| 'delete'  | Delete file or directory                | dir/file                   |
+| 'echo'    | Echo parameters into file               | dst file, parameters       |
+| 'append'  | Append parameters to end of file        | dst file, parameters       |
+| 'cat'     | Concatenate multiple files into one     | dst file, source files     |
+| 'cd'      | Change directory                        | dir                        |
+| 'ok'      | Run external command, ignoring errors   | external command           |
+| 'try'     | Run external command, retry on error    | tries, external command    |
+| 'exists'  | Run external command if dir/file exists | dir/file, external command |
+| 'python'  | Run Python script                       | Python commands            |
 
 #### Pre-processing rule
 This rule can be used to perform pre-processing steps, e.g. copying files to $SRCDIR.

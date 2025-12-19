@@ -14,6 +14,10 @@ import subprocess
 import sys
 import threading
 
+# Version and date
+mimk_version = '1.43'
+mimk_date = '2025-12-19'
+
 # Terminal detection
 def is_terminal():
     return hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
@@ -165,7 +169,15 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                         if not undo:
                             # Echo parameters into file
                             with open(param[1], 'w') as echo_file:
-                                echo_file.write(' '.join(param[2:]))
+                                print(' '.join(param[2:]), file=echo_file)
+                        else:
+                            if os.path.isfile(param[1]):
+                                os.remove(param[1])
+                    elif param[0] == 'append':
+                        if not undo:
+                            # Append parameters to end of file
+                            with open(param[1], 'a') as append_file:
+                                print(' '.join(param[2:]), file=append_file)
                         else:
                             if os.path.isfile(param[1]):
                                 os.remove(param[1])
@@ -206,22 +218,23 @@ def run_command(command_str, undo=False, iteration=0, total=0, name=''):
                             # Run python code
                             exec(' '.join(param[1:]))
             else:
-                # Print progress
-                if total > 0 and is_terminal():
-                    print_progress(iteration, total, name)
-                # External command
-                try:
-                    ret = subprocess.run(' '.join([x for x in shlex.split(command, posix=False) if x]), shell=True).returncode
-                    if not args.debug:
-                        if ret < 0:
-                            color_print('Command {} terminated by signal {}'.format(command.split(' ')[0], -ret))
-                            sys.exit(ret)
-                        elif ret > 0:
-                            color_print('Command {} returned error {}'.format(command.split(' ')[0], ret))
-                            sys.exit(ret)
-                except OSError as e:
-                    color_print('Command execution failed: {}'.format(e))
-                    sys.exit(1)
+                if not undo:
+                    # Print progress
+                    if total > 0 and is_terminal():
+                        print_progress(iteration, total, name)
+                    # External command
+                    try:
+                        ret = subprocess.run(' '.join([x for x in shlex.split(command, posix=False) if x]), shell=True).returncode
+                        if not args.debug:
+                            if ret < 0:
+                                color_print('Command {} terminated by signal {}'.format(command.split(' ')[0], -ret))
+                                sys.exit(ret)
+                            elif ret > 0:
+                                color_print('Command {} returned error {}'.format(command.split(' ')[0], ret))
+                                sys.exit(ret)
+                    except OSError as e:
+                        color_print('Command execution failed: {}'.format(e))
+                        sys.exit(1)
         # Restore working directory
         os.chdir(wd)
 
@@ -330,10 +343,6 @@ def build_dep_and_src(lock, src_path, idx):
 # Main program
 total_time_start = datetime.datetime.now()
 execute_elapsed = total_time_start - total_time_start
-
-# Version and date
-mimk_version = '1.41'
-mimk_date = '2024-03-09'
 
 # Set config path
 config_dir = next((dir for dir in ['mimk', 'cfg'] if os.path.isdir(dir)), '')
